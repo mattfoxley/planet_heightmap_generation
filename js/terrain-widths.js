@@ -25,6 +25,15 @@ export function widthKmToHops(widthKm, meshMetrics, floorHops = 1) {
   return Math.max(floorHops, Math.round(widthKm / meshMetrics.averageEdgeKm));
 }
 
+/**
+ * Continuous (un-rounded) hop distance from a physical km width — for sites that use scaleFactor as a
+ * smooth multiplier in ramps/thresholds (e.g. rift floor/shoulder), not a discrete hop count.
+ * For legacy (Earth radius) this equals BASE·scaleFactor.
+ */
+export function widthKmToHopsFloat(widthKm, meshMetrics) {
+  return widthKm / meshMetrics.averageEdgeKm;
+}
+
 /** Legacy scaleFactor (kept for reference / the legacy code path). */
 export function scaleFactor(numRegions) {
   return Math.sqrt(numRegions / REF_REGIONS);

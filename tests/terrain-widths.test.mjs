@@ -3,7 +3,7 @@
 // EXACTLY across representative *_BASE values and mesh resolutions, for the Earth radius.
 // Run: node --experimental-modules tests/terrain-widths.test.mjs
 
-import { baseWidthKm, widthKmToHops, scaleFactor, REF_REGIONS } from '../js/terrain-widths.js';
+import { baseWidthKm, widthKmToHops, widthKmToHopsFloat, scaleFactor, REF_REGIONS } from '../js/terrain-widths.js';
 import { computeMeshPhysicalMetrics } from '../js/world-scale.js';
 
 let passed = 0, failed = 0, maxDiff = 0;
@@ -28,6 +28,19 @@ for (const N of RESOLUTIONS) {
     ok(`parity base=${base} floor=${floor} N=${N} (legacy=${legacy} km=${kmHops})`, legacy === kmHops);
   }
 }
+
+// continuous (float) parity vs BASE*scaleFactor — for rift/arc smooth-ramp sites
+let maxRelDiff = 0;
+for (const N of RESOLUTIONS) {
+  const m = computeMeshPhysicalMetrics(N, R);
+  for (const [base] of CASES) {
+    const legacy = base * scaleFactor(N);
+    const kmFloat = widthKmToHopsFloat(baseWidthKm(base, R), m);
+    const rel = legacy === 0 ? 0 : Math.abs(legacy - kmFloat) / legacy;
+    if (rel > maxRelDiff) maxRelDiff = rel;
+  }
+}
+ok(`float parity vs BASE*scaleFactor (rel diff ${maxRelDiff.toExponential(2)} < 1e-12)`, maxRelDiff < 1e-12);
 
 // baseWidthKm sanity: 1 base unit ≈ 200.06 km at Earth radius
 ok('baseWidthKm(1) ≈ 200.06 km', Math.abs(baseWidthKm(1, R) - Math.PI * R / 100) < 1e-9);

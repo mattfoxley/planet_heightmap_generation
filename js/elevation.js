@@ -769,7 +769,7 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
     }
 
     return {
-        r_isOcean,
+        r_isOcean, meshMetrics,   // meshMetrics exposed on spatial fields for stages without `tect`
         dist_mountain, dist_ocean, dist_coastline, dist_coast, dist_coast_land,
         dBdry, coastStressMax, coastSubductMax, coastConvergent, maxCD,
         riftDist, riftHalfWidth,
@@ -1665,15 +1665,15 @@ function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, see
 // ─────────────────────────────────────────────────────────────────────────
 function applyCoastalDetail(mesh, r_xyz, r_elevation, tect, sf, noise, noiseMag, seed, debugLayers) {
     const { numRegions } = mesh;
-    const { r_stress, maxStress, scaleFactor } = tect;
+    const { r_stress, maxStress, meshMetrics } = tect;
     const { r_isOcean, dBdry, coastStressMax, coastSubductMax, coastConvergent } = sf;
     const dl_coastal = debugLayers.coastal;
 
-    const coastRoughenDist = Math.max(8, Math.round(COAST_ROUGHEN_BASE * scaleFactor));
+    const coastRoughenDist = widthKmToHops(baseWidthKm(COAST_ROUGHEN_BASE, meshMetrics.radiusKm), meshMetrics, 8);
     const cNoise  = new SimplexNoise(seed + 77);
     const cNoise2 = new SimplexNoise(seed + 133);
     const cNoise3 = new SimplexNoise(seed + 211);
-    const islandMaxDist = Math.max(4, Math.round(ISLAND_DIST_BASE * scaleFactor));
+    const islandMaxDist = widthKmToHops(baseWidthKm(ISLAND_DIST_BASE, meshMetrics.radiusKm), meshMetrics, 4);
 
     for (let r = 0; r < numRegions; r++) {
         if (dBdry[r] > coastRoughenDist) continue;
@@ -1748,13 +1748,13 @@ function applyCoastalDetail(mesh, r_xyz, r_elevation, tect, sf, noise, noiseMag,
 // ─────────────────────────────────────────────────────────────────────────
 function applyIslandArcs(mesh, r_xyz, r_elevation, tect, sf, r_plate, seed, debugLayers) {
     const { numRegions, adjOffset, adjList } = mesh;
-    const { r_boundaryType, r_subductFactor, r_stress, r_bothOcean, maxStress, scaleFactor } = tect;
+    const { r_boundaryType, r_subductFactor, r_stress, r_bothOcean, maxStress, scaleFactor, meshMetrics } = tect;
     const { r_isOcean } = sf;
     const dl_coastal = debugLayers.coastal;
 
     const arcNoise = new SimplexNoise(seed + 307);
     const arcMacroNoise = new SimplexNoise(seed + 911);
-    const maxArcDist = Math.max(5, Math.round(ARC_DIST_BASE * scaleFactor));
+    const maxArcDist = widthKmToHops(baseWidthKm(ARC_DIST_BASE, meshMetrics.radiusKm), meshMetrics, 5);
 
     const arcSeeds = [];
     const arcDist = new Float32Array(numRegions);
@@ -2369,17 +2369,16 @@ function applyHotspotsAndLIPs(mesh, r_xyz, r_elevation, tect, sf, plateVec, r_pl
 // ─────────────────────────────────────────────────────────────────────────
 function applyUniformLandNoise(mesh, r_xyz, r_elevation, sf, tt, noiseMag, seed, debugLayers) {
     const { numRegions, adjOffset, adjList } = mesh;
-    const { r_isOcean, dist_mountain } = sf;
+    const { r_isOcean, dist_mountain, meshMetrics } = sf;
     const { r_basinFactor } = tt;
     const dl_uniformNoise = debugLayers.uniformNoise;
-    const scaleFactor = Math.sqrt(numRegions / COLLISION_DT_REF_REGIONS);
 
     const addNoise = new SimplexNoise(seed + 500);
     const subNoise = new SimplexNoise(seed + 501);
     const freq = UNIFORM_LAND_NOISE_FREQ;
     const oct  = UNIFORM_LAND_NOISE_OCTAVES;
     const amp  = UNIFORM_LAND_NOISE_AMP * noiseMag;
-    const mtnRampDist = Math.max(4, Math.round(20 * scaleFactor));
+    const mtnRampDist = widthKmToHops(baseWidthKm(20, meshMetrics.radiusKm), meshMetrics, 4);
     const halfFreq = freq * 0.5;
     const halfAmp = amp * 0.5;
 

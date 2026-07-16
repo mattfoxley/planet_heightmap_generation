@@ -74,13 +74,24 @@
 - [x] Convert foreland and back-arc distances. _(baStart/baPeak/baEnd. Foreland uses stress fractions, not hop widths.)_
 - [x] Convert shelf and continental slope widths. _(SHELF_NARROW/WIDE, SLOPE_WIDTH)_
 - [x] Convert trench/ridge/fracture influence widths. _(mid-ocean RIDGE_HW, FRACTURE; also COAST_BFS maxCD + COASTAL_PLAIN. Trench is a depth (normalized elev), not a width → Phase-2-style.)_
-- [ ] Convert island-arc and volcano spacing/sigma. _(applyIslandArcs/applyVolcanicArcs take `sf` — thread meshMetrics first)_
+- [~] Convert island-arc and volcano spacing/sigma. _(rounded `maxArcDist` (ARC_DIST) done; continuous arc `peakDist`/`sigma` + volcano spacing still pending — need `widthKmToHopsFloat`.)_
 - [ ] Convert hotspot dimensions and spacing. _(applyHotspotsAndLIPs)_
+- [x] Convert coastal roughening + island distance + uniform-noise mtn ramp. _(applyCoastalDetail: coastRoughenDist, islandMaxDist; applyUniformLandNoise: mtnRampDist via `sf.meshMetrics`; local scaleFactor removed there.)_
+- [ ] Convert continuous rift floor/shoulder multipliers (buildSkeleton ~1017-1019/1152/1154) via `widthKmToHopsFloat`.
 - [ ] Add cells-per-feature warnings.
 - [ ] Compare feature widths at 200k, 500k, and 1M regions.
 
-> Batch 2 legacy parity VERIFIED: seeds 42/100/200/400 × detail 400/600 all byte-identical to
-> `tuning/baselines/earth/`. (buildSkeleton now binds `meshMetrics` from `tect`.)
+> Parity VERIFIED for all rounded batches: 7 STABLE baselines (all detail-400 + s100/s200/s400 @ d600)
+> byte-identical to `tuning/baselines/earth/`; and same-run-sequence output is identical with/without the
+> batch (checked via git-stash A/B).
+>
+> ⚠ **Determinism finding (root of the Phase-0 collision):** `s42_d600` is ORDER-DEPENDENT — 345/55692 in
+> the baseline capture order (full d400 block first), but 415/53744 in other orders — REPRODUCIBLY, and
+> IDENTICALLY with the batch stashed vs applied. So the generator has pre-existing **retained-state
+> non-determinism** across generations (worker `W`/module state leaking), NOT introduced by this migration.
+> ⇒ the `s42_d600` baseline is unreliable; parity must be judged on the 7 stable baselines + same-sequence
+> A/B. `TODO(investigate, separate)`: worker-state reset between `handleGenerate` calls (affects success-
+> criterion #6). Added `widthKmToHopsFloat` (tests/terrain-widths.test.mjs 80/80).
 
 ## Phase 4 — Warp and Smoothing
 
