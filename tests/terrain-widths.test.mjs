@@ -3,7 +3,7 @@
 // EXACTLY across representative *_BASE values and mesh resolutions, for the Earth radius.
 // Run: node --experimental-modules tests/terrain-widths.test.mjs
 
-import { baseWidthKm, widthKmToHops, widthKmToHopsFloat, featureWidthWarnings, scaleFactor, REF_REGIONS } from '../js/terrain-widths.js';
+import { baseWidthKm, widthKmToHops, widthKmToHopsFloat, featureHops, featureHopsFloat, featureWidthWarnings, scaleFactor, REF_REGIONS } from '../js/terrain-widths.js';
 import { computeMeshPhysicalMetrics } from '../js/world-scale.js';
 import { getWorldProfile } from '../js/world-profiles.js';
 
@@ -56,6 +56,29 @@ ok('baseWidthKm(1) ≈ 200.06 km', Math.abs(baseWidthKm(1, R) - Math.PI * R / 10
   ok('compact @ 50k → some under-resolved warnings', wLow.length > 0);
   ok('warnings decrease (or hold) with resolution', wHigh.length <= wLow.length);
   ok('warning text mentions "cells across"', wLow.length === 0 || wLow[0].includes('cells across'));
+}
+
+// featureHops (Phase 10 wiring): profile-declared km when present, else legacy BASE fallback.
+{
+  const earthM = computeMeshPhysicalMetrics(500000, 6371);
+  const compactM = computeMeshPhysicalMetrics(500000, 20);
+  // null/undefined/NaN profileKm → identical to the pre-existing legacy conversion (byte-for-byte).
+  for (const [base, floor] of CASES) {
+    const legacy = widthKmToHops(baseWidthKm(base, 6371), earthM, floor);
+    ok(`featureHops(null) == legacy base=${base}`, featureHops(null, base, earthM, floor) === legacy);
+    ok(`featureHops(undefined) == legacy base=${base}`, featureHops(undefined, base, earthM, floor) === legacy);
+    ok(`featureHops(NaN) == legacy base=${base}`, featureHops(NaN, base, earthM, floor) === legacy);
+  }
+  // Explicit profile km is used directly (independent of BASE): 9 km on a 20 km sphere.
+  ok('featureHops(9km) uses km, not BASE', featureHops(9, 20 /*ignored*/, compactM, 6) === widthKmToHops(9, compactM, 6));
+  ok('featureHops honors floor', featureHops(0.001, 99, compactM, 5) === 5);
+  ok('featureHopsFloat(null) == legacy float', Math.abs(featureHopsFloat(null, 12, earthM) - widthKmToHopsFloat(baseWidthKm(12, 6371), earthM)) < 1e-12);
+  ok('featureHopsFloat(km) uses km', Math.abs(featureHopsFloat(2.5, 99, compactM) - 2.5 / compactM.averageEdgeKm) < 1e-12);
+  // The compact macro widths this change wires (mountainInfluence 9, ridgeEnvelope 2.5, coastalPlain 1.5,
+  // shelf 0.8, slope 0.8) all resolve to >= their floors at 500k and are smaller than Earth's angular pattern.
+  const c = getWorldProfile('compact-40km');
+  ok('compact mountainInfluence 9km > 0 hops', featureHops(c.tectonics.mountainInfluenceKm, 20, compactM, 6) >= 6);
+  ok('compact coastalPlain 1.5km resolves', featureHops(c.terrain.coastalPlainWidthKm, 12, compactM, 6) >= 6);
 }
 
 console.log(`terrain-widths tests: ${passed} passed, ${failed} failed (max hop diff = ${maxDiff})`);

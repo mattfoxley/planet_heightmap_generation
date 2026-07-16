@@ -57,6 +57,24 @@ export function widthKmToHops(widthKm, meshMetrics, floorHops = 1) {
 }
 
 /**
+ * Feature width in hops, using the PROFILE's declared physical km when present, else the legacy
+ * `BASE`-derived width (design §5–6). This is what lets a compact world's features occupy their
+ * intended physical size instead of Earth's angular pattern. When `profileKm == null` (e.g. the
+ * legacy profile, which declares no feature km) this is byte-identical to the pre-existing
+ * `widthKmToHops(baseWidthKm(BASE, radiusKm), …)`.
+ */
+export function featureHops(profileKm, legacyBase, meshMetrics, floorHops = 1) {
+  const km = (profileKm != null && !isNaN(profileKm)) ? profileKm : baseWidthKm(legacyBase, meshMetrics.radiusKm);
+  return widthKmToHops(km, meshMetrics, floorHops);
+}
+
+/** Continuous form of {@link featureHops} — profile km when present, else legacy BASE-derived km. */
+export function featureHopsFloat(profileKm, legacyBase, meshMetrics) {
+  const km = (profileKm != null && !isNaN(profileKm)) ? profileKm : baseWidthKm(legacyBase, meshMetrics.radiusKm);
+  return km / meshMetrics.averageEdgeKm;
+}
+
+/**
  * Continuous (un-rounded) hop distance from a physical km width — for sites that use scaleFactor as a
  * smooth multiplier in ramps/thresholds (e.g. rift floor/shoulder), not a discrete hop count.
  * For legacy (Earth radius) this equals BASE·scaleFactor.

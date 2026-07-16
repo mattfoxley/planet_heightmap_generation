@@ -17,7 +17,7 @@ import { makeRandInt, makeRng } from './rng.js';
 import { SimplexNoise } from './simplex-noise.js';
 import { computeMeshPhysicalMetrics, warpKmToAngular, clampWarpKm } from './world-scale.js';
 import { getWorldProfile } from './world-profiles.js';
-import { baseWidthKm, widthKmToHops, widthKmToHopsFloat } from './terrain-widths.js';
+import { baseWidthKm, widthKmToHops, widthKmToHopsFloat, featureHops } from './terrain-widths.js';
 import {
     COLLISION_THRESHOLD, COLLISION_DT_BASE, COLLISION_DT_REF_REGIONS,
     PAIR_INTENSITY_BASE, SUBDUCT_UNDULATION_DENSITY_DECAY, SUBDUCT_UNDULATION_FREQ,
@@ -567,7 +567,7 @@ function computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plat
 // ─────────────────────────────────────────────────────────────────────────
 function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, superPlateData) {
     const { numRegions, adjOffset, adjList } = mesh;
-    const { stress_mountain_r, coastline_r, ocean_r, r_boundaryType, r_bothOcean, r_hasOcean, r_subductFactor, r_stress, maxStress, scaleFactor, meshMetrics } = tect;
+    const { stress_mountain_r, coastline_r, ocean_r, r_boundaryType, r_bothOcean, r_hasOcean, r_subductFactor, r_stress, maxStress, scaleFactor, meshMetrics, profile } = tect;
     // Rift BFS uses super-plate IDs when available so expansion doesn't
     // stop at internal small-plate boundaries inside the same super plate.
     // r_boundaryType comes from super plates, so the seeds and the
@@ -768,6 +768,7 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
         }
     }
 
+    const _tec = profile && profile.tectonics, _ter = profile && profile.terrain;
     return {
         r_isOcean, meshMetrics,   // meshMetrics exposed on spatial fields for stages without `tect`
         dist_mountain, dist_ocean, dist_coastline, dist_coast, dist_coast_land,
@@ -780,11 +781,13 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
         // Math.round(BASE*scaleFactor) EXACTLY (proven, tests/terrain-widths.test.mjs); compact worlds
         // get correctly-scaled widths from profile.radiusKm.
         interiorBand:    widthKmToHops(baseWidthKm(INTERIOR_BAND_BASE,    meshMetrics.radiusKm), meshMetrics, 4),
-        tectonicReach:   widthKmToHops(baseWidthKm(TECTONIC_REACH_BASE,   meshMetrics.radiusKm), meshMetrics, 6),
+        // Phase 10 (compact tuning): dominant macro widths read the profile's declared physical km when
+        // present (compact → mountain influence 9 km, ridge envelope 2.5 km); legacy → BASE fallback (unchanged).
+        tectonicReach:   featureHops(_tec && _tec.mountainInfluenceKm, TECTONIC_REACH_BASE, meshMetrics, 6),
         plateauStart:    widthKmToHops(baseWidthKm(PLATEAU_START_BASE,    meshMetrics.radiusKm), meshMetrics, 2),
         ridgeSigmaBase:  widthKmToHops(baseWidthKm(RIDGE_SIGMA_BASE_CFG,  meshMetrics.radiusKm), meshMetrics, 2),
         ridgePeakShift:  widthKmToHops(baseWidthKm(RIDGE_PEAK_SHIFT_BASE, meshMetrics.radiusKm), meshMetrics, 1),
-        ridgeExtent:     widthKmToHops(baseWidthKm(RIDGE_EXTENT_BASE,     meshMetrics.radiusKm), meshMetrics, 4),
+        ridgeExtent:     featureHops(_ter && _ter.ridgeEnvelopeKm, RIDGE_EXTENT_BASE, meshMetrics, 4),
     };
 }
 
@@ -863,7 +866,8 @@ function classifyTerrain(mesh, r_xyz, tect, sf, seed) {
 // ─────────────────────────────────────────────────────────────────────────
 function buildSkeleton(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, tect, sf, tt, noise, noiseMag, seed, debugLayers) {
     const { numRegions } = mesh;
-    const { meshMetrics } = tect;   // Phase 3: physical width conversion (threaded via tect)
+    const { meshMetrics, profile } = tect;   // Phase 3: physical width conversion (threaded via tect)
+    const _ter = profile && profile.terrain; // Phase 10: profile-declared coastal/shelf/slope km (compact)
     const r_elevation = new Float32Array(numRegions);
     const dl_base       = debugLayers.base;
     const dl_tectonic   = debugLayers.tectonic;
@@ -1126,7 +1130,7 @@ function buildSkeleton(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds,
 
             // Passive margin coastal plain suppression
             {
-                const coastPlainWidth = widthKmToHops(baseWidthKm(COASTAL_PLAIN_WIDTH_BASE, meshMetrics.radiusKm), meshMetrics, 6);
+                const coastPlainWidth = featureHops(_ter && _ter.coastalPlainWidthKm, COASTAL_PLAIN_WIDTH_BASE, meshMetrics, 6);
                 if (lcd < coastPlainWidth && dBdry[r] <= maxCD && !coastConvergent[r]) {
                     const t = lcd / coastPlainWidth;
                     const fade = t * t * (3 - 2 * t);
@@ -1161,9 +1165,9 @@ function buildSkeleton(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds,
             const dc = dist_coast[r];
             const isActiveMarginShelf = coastConvergent[r] === 1;
             const shelfWidth = isActiveMarginShelf
-                ? widthKmToHops(baseWidthKm(SHELF_NARROW_BASE, meshMetrics.radiusKm), meshMetrics, 2)
-                : widthKmToHops(baseWidthKm(SHELF_WIDE_BASE, meshMetrics.radiusKm), meshMetrics, 4);
-            const slopeWidth = widthKmToHops(baseWidthKm(SLOPE_WIDTH_BASE, meshMetrics.radiusKm), meshMetrics, 3);
+                ? featureHops(_ter && _ter.shelfWidthKm, SHELF_NARROW_BASE, meshMetrics, 2)
+                : featureHops(_ter && _ter.shelfWidthKm, SHELF_WIDE_BASE, meshMetrics, 4);
+            const slopeWidth = featureHops(_ter && _ter.continentalSlopeWidthKm, SLOPE_WIDTH_BASE, meshMetrics, 3);
             const totalMargin = shelfWidth + slopeWidth;
 
             let oceanBase;
