@@ -319,7 +319,7 @@ function handleGenerate(data) {
         progress(35, 'Raising mountains\u2026');
         t0 = performance.now();
         const { r_elevation, mountain_r, coastline_r, ocean_r, r_stress, debugLayers, _timing } =
-            assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, noise, nMag, seed, spread, plateDensity, superPlateData, r_mantleField, meshMetrics);
+            assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, noise, nMag, seed, spread, plateDensity, superPlateData, r_mantleField, meshMetrics, profile);
         timing.push({ stage: 'Elevation (collisions + stress + distance fields + assignment)', ms: performance.now() - t0 });
 
         const prePostElev = new Float32Array(r_elevation);

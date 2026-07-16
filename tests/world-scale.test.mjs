@@ -5,6 +5,7 @@
 import {
   angularDistanceRad, chordToAngularRad, angularToKm, kmToAngular,
   averageEdgeAngleRad, computeMeshPhysicalMetrics, kmToApproxHops, cellsAcrossFeature,
+  warpKmToAngular, clampWarpKm,
 } from '../js/world-scale.js';
 import { getWorldProfile, DEFAULT_PROFILE_ID, listWorldProfileIds } from '../js/world-profiles.js';
 
@@ -42,6 +43,13 @@ ok('spec: warp 1km @ r20 = 0.05 rad', approx(kmToAngular(1, 20), 0.05, 1e-12));
   ok('kmToApproxHops(8km) = round(8/edgeKm) ≥1', hops === Math.max(1, Math.round(8/m.averageEdgeKm)) && hops >= 1);
   ok('cellsAcrossFeature(8km) = 8/edgeKm', approx(cellsAcrossFeature(8, m), 8/m.averageEdgeKm));
 }
+
+// warp (design §7)
+ok('spec: warp 1km @ r20 → 0.05 rad', approx(warpKmToAngular(1, 20), 0.05, 1e-12));
+ok('warp scales inversely with radius', approx(warpKmToAngular(1, 6371), 1 / 6371, 1e-15));
+ok('clampWarpKm caps at 0.25×feature', clampWarpKm(0.3, 1.0, 0.8) === 0.2);
+ok('clampWarpKm caps at maxWarpKm', clampWarpKm(5, 1.0, 100) === 1.0);
+ok('clampWarpKm passes when under all bounds', clampWarpKm(0.1, 1.0, 0.8) === 0.1);
 
 // profiles
 ok('compact-40km radius = 20', getWorldProfile('compact-40km').radiusKm === 20);

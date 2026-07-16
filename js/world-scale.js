@@ -64,3 +64,20 @@ export function kmToApproxHops(km, meshMetrics) {
 export function cellsAcrossFeature(featureWidthKm, meshMetrics) {
   return featureWidthKm / meshMetrics.averageEdgeKm;
 }
+
+/**
+ * Domain-warp amplitude: physical km → unit-sphere angular displacement (design §7).
+ * A physically-constant warp becomes a LARGER angular displacement on a smaller sphere, so compact
+ * worlds must clamp it (see clampWarpKm) or the warp folds terrain across features.
+ */
+export function warpKmToAngular(warpKm, radiusKm) {
+  return warpKm / radiusKm;
+}
+
+/**
+ * Clamp a warp amplitude (km) so it can't exceed a profile cap OR a quarter of the smallest protected
+ * feature width (design §7 safety clamp). Pass Infinity for an unset bound.
+ */
+export function clampWarpKm(warpKm, maxWarpKm = Infinity, smallestProtectedFeatureKm = Infinity) {
+  return Math.min(warpKm, maxWarpKm, 0.25 * smallestProtectedFeatureKm);
+}

@@ -97,15 +97,18 @@
 > A/B. `TODO(investigate, separate)`: worker-state reset between `handleGenerate` calls (affects success-
 > criterion #6). Added `widthKmToHopsFloat` (tests/terrain-widths.test.mjs 80/80).
 
-## Phase 4 — Warp and Smoothing
+## Phase 4 — Warp and Smoothing  ✅
 
-- [ ] Replace warp amplitude constants with kilometer values.
-- [ ] Convert warp kilometers to angular amplitude per profile.
-- [ ] Add safety clamp relative to protected feature widths.
-- [ ] Convert smoothing target to physical radius.
-- [ ] Initially map physical smoothing radius to approximate iterations.
-- [ ] Optionally implement geodesic-radius edge-aware smoothing.
-- [ ] Add physical warp and smoothing diagnostics.
+- [x] Replace warp amplitude constants with kilometer values. _(profile.terrain.warpAmplitudeKm + maxWarpKm; compact-40km declares them. Legacy has no `terrain` block → phasor warp keeps PHASOR_WARP_AMPLITUDE unchanged.)_
+- [x] Convert warp kilometers to angular amplitude per profile. _(world-scale.js `warpKmToAngular(warpKm, radiusKm)`; applyPhasorRidges uses it when profile declares warpAmplitudeKm.)_
+- [x] Add safety clamp relative to protected feature widths. _(world-scale.js `clampWarpKm(warpKm, maxWarpKm, smallestProtectedFeatureKm)` — clamps to ≤ maxWarpKm and ≤ 0.25×ridgeSpacing. tests/world-scale.test.mjs 24/24, incl. spec scenario 1km@r20→0.05 rad.)_
+- [x] Convert smoothing target to physical radius. _(phasor direction smoothing already `PHASOR_DIRECTION_SMOOTHING_KM / meshMetrics.averageEdgeKm` — made physical in the phasor batch. No other terrain smoothing encodes a physical radius: terrain-post.js `SMOOTH_EDGE_SENSITIVITY` is a dimensionless edge-weight; erosion/glacial passes are slider iteration counts.)_
+- [x] Initially map physical smoothing radius to approximate iterations. _(phasor: `round(km / avgEdgeKm)` passes.)_
+- [~] Optionally implement geodesic-radius edge-aware smoothing. _(OPTIONAL/deferred — terrain-post already has edge-aware weighting; geodesic-radius smoothing is a refinement, not needed for parity.)_
+- [x] Add physical warp and smoothing diagnostics. _(featureWidthWarnings covers under-resolution; phasor warnings logged. warpAmplitudeKm surfaced via profile.)_
+
+> Warp verified in-pipeline: legacy (no `terrain` block → unchanged PHASOR_WARP_AMPLITUDE) reproduces
+> all 4 detail-400 stable baselines byte-identically. Compact worlds get km-based, clamped warp.
 
 ## Phase 5 — Thermal Erosion
 

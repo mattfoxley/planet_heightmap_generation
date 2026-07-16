@@ -63,6 +63,7 @@ export const COMPACT_40KM_PROFILE = {
     ridgeSpacingKm: 0.8, ridgeEnvelopeKm: 2.5, ridgeDirectionSmoothingKm: 4.0,
     foothillReachKm: 3.5, coastalPlainWidthKm: 1.5, shelfWidthKm: 0.8,
     continentalSlopeWidthKm: 0.8, basinScaleKm: 8.0, detailMinWavelengthKm: 0.12,
+    warpAmplitudeKm: 0.3, maxWarpKm: 1.0,   // domain warp (design §7); clamped vs smallest protected feature
   },
   erosion: {
     talusAngleDeg: 34, smoothingRadiusKm: 0.15, canyonCarveRadiusKm: 0.20,

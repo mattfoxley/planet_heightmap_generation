@@ -15,7 +15,7 @@
 
 import { makeRandInt, makeRng } from './rng.js';
 import { SimplexNoise } from './simplex-noise.js';
-import { computeMeshPhysicalMetrics } from './world-scale.js';
+import { computeMeshPhysicalMetrics, warpKmToAngular, clampWarpKm } from './world-scale.js';
 import { getWorldProfile } from './world-profiles.js';
 import { baseWidthKm, widthKmToHops, widthKmToHopsFloat } from './terrain-widths.js';
 import {
@@ -388,7 +388,7 @@ export function expandRegions(mesh, regions, steps) {
 //  Collisions × (small + super), blending, stress propagation, mantle
 //  modulation, plate-interior seeding, percentile normalization.
 // ─────────────────────────────────────────────────────────────────────────
-function computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, plateDensity, noise, superPlateData, r_mantleField, spread, meshMetrics) {
+function computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, plateDensity, noise, superPlateData, r_mantleField, spread, meshMetrics, profile) {
     const { numRegions } = mesh;
 
     let r_mantleNorm = null;
@@ -557,7 +557,7 @@ function computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plat
         mountain_r, coastline_r, ocean_r, stress_mountain_r,
         r_stress, r_stressDir, r_subductFactor, r_boundaryType,
         r_bothOcean, r_hasOcean, r_mantleNorm,
-        maxStress, scaleFactor, meshMetrics
+        maxStress, scaleFactor, meshMetrics, profile
     };
 }
 
@@ -1378,7 +1378,7 @@ function applyDetailTexture(mesh, r_xyz, r_elevation, tect, sf, noise, noiseMag,
 // ─────────────────────────────────────────────────────────────────────────
 function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, seed, debugLayers) {
     const { numRegions, adjOffset, adjList } = mesh;
-    const { r_stress, r_stressDir, r_subductFactor, maxStress, meshMetrics } = tect;
+    const { r_stress, r_stressDir, r_subductFactor, maxStress, meshMetrics, profile } = tect;
     const { r_isOcean } = sf;
     const { r_t_foldBelt } = tt;
     const dl_phasor = debugLayers.phasorRidge;
@@ -1557,7 +1557,11 @@ function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, see
         // their summed phase curve consistently — phasor stripes meander
         // organically instead of tracing perfect small-circles.
         const wf = PHASOR_WARP_FREQ;
-        const wa = PHASOR_WARP_AMPLITUDE;
+        // Phase 4 (design §7): warp amplitude from physical km when the profile declares it (clamped vs
+        // the smallest protected feature = ridge spacing); legacy has no km value → unchanged amplitude.
+        const wa = (profile.terrain && profile.terrain.warpAmplitudeKm != null)
+            ? warpKmToAngular(clampWarpKm(profile.terrain.warpAmplitudeKm, profile.terrain.maxWarpKm, profile.terrain.ridgeSpacingKm), meshMetrics.radiusKm)
+            : PHASOR_WARP_AMPLITUDE;
         const woct = PHASOR_WARP_OCTAVES;
         const warpX = warpNoise.fbm(px * wf + 17.3, py * wf + 28.4, pz * wf + 9.1, woct, 0.5) * wa;
         const warpY = warpNoise.fbm(px * wf + 5.2, py * wf + 33.6, pz * wf + 22.8, woct, 0.5) * wa;
@@ -2519,11 +2523,12 @@ function fixupTopology(mesh, r_elevation, r_isOcean) {
 // ─────────────────────────────────────────────────────────────────────────
 //  Main orchestrator
 // ─────────────────────────────────────────────────────────────────────────
-export function assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, noise, noiseMag, seed, spread, plateDensity, superPlateData, r_mantleField, meshMetrics) {
+export function assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, noise, noiseMag, seed, spread, plateDensity, superPlateData, r_mantleField, meshMetrics, profile) {
     const { numRegions } = mesh;
     // Phase 3: physical mesh metrics thread through generation. Default to the legacy profile radius
     // (no Earth-radius literal) so callers that don't pass meshMetrics keep exact legacy behavior.
     const mm = meshMetrics || computeMeshPhysicalMetrics(numRegions, getWorldProfile('legacy').radiusKm);
+    const prof = profile || getWorldProfile('legacy');
     const _timing = [];
     let _t0 = performance.now();
 
@@ -2547,7 +2552,7 @@ export function assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, pl
     };
 
     // Stage 1
-    const tect = computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, plateDensity, noise, superPlateData, r_mantleField, spread, mm);
+    const tect = computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, plateDensity, noise, superPlateData, r_mantleField, spread, mm, prof);
     _timing.push({ stage: '1. Tectonic state', ms: performance.now() - _t0 }); _t0 = performance.now();
 
     // Stage 2
