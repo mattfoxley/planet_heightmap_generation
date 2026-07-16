@@ -1,0 +1,203 @@
+{
+ "profile": "earthlike-legacy",
+ "radiusKmAssumed": 6371,
+ "capturedVia": "in-app browser (puppeteer absent, Node 12); window.__terrainMetrics scorecard",
+ "detailSlider_note": "sN 400 ~= 31k regions (fast); 600 = app default (~55k land cells)",
+ "seeds": [
+  42,
+  100,
+  200,
+  400
+ ],
+ "_anomalies": [
+  "REPRODUCIBLE: seed 42 and seed 400 produce byte-identical terrain at detail 600 (island_count_total=345, land_cells=55692, coast_complexity=28.4671) but DIFFER at detail 400 (seed42: 74 islands / 8128 land; seed400: 60 islands / 8224 land). Seeds 100 & 200 vary normally at 600. postMessage trace confirms the worker received seed=400, so injection is correct -> this is genuine generator behavior, a seed x detail interaction. Threatens success-criterion #6 (equivalent seeds -> recognizable structure across detail levels). TODO(investigate): rng.js seeding + fine-mesh seed path; ensure Phase-1 deterministic-seed tests account for this."
+ ],
+ "_pending": "Heightmap PNG export not captured via browser download automation; metrics scorecard is the baseline reference. Add PNG export capture when puppeteer/download path is available.",
+ "baselines": {
+  "seed-42_detail-400": {
+   "seed": 42,
+   "detailSlider": 400,
+   "elapsedSec": 2.6,
+   "metrics": {
+    "continent_count": 5,
+    "island_count_total": 74,
+    "island_cells_total": 138,
+    "continent_solidity_mean": 0.4094,
+    "relief_headroom": 0.4102,
+    "coast_complexity_index": 19.2889,
+    "coastline_cells": 1739,
+    "land_cells": 8128,
+    "ocean_mode_elev": -0.2237,
+    "land_mode_elev": 0.1793,
+    "land_band_0_50m_frac": 0.4329,
+    "land_band_500m_plus_frac": 0.1987,
+    "shelf_width_active_km": 455,
+    "shelf_width_passive_km": 796,
+    "interior_gradient_per_km": 5e-06,
+    "phasor_ridge_active_cells": 4114
+   }
+  },
+  "seed-100_detail-400": {
+   "seed": 100,
+   "detailSlider": 400,
+   "elapsedSec": 2.1,
+   "metrics": {
+    "continent_count": 4,
+    "island_count_total": 71,
+    "island_cells_total": 185,
+    "continent_solidity_mean": 0.3265,
+    "relief_headroom": 0.4211,
+    "coast_complexity_index": 21.183,
+    "coastline_cells": 1928,
+    "land_cells": 8284,
+    "ocean_mode_elev": -0.2237,
+    "land_mode_elev": 0.1923,
+    "land_band_0_50m_frac": 0.4628,
+    "land_band_500m_plus_frac": 0.2062,
+    "shelf_width_active_km": 341,
+    "shelf_width_passive_km": 682,
+    "interior_gradient_per_km": 6.4e-05,
+    "phasor_ridge_active_cells": 4185
+   }
+  },
+  "seed-200_detail-400": {
+   "seed": 200,
+   "detailSlider": 400,
+   "elapsedSec": 1.8,
+   "metrics": {
+    "continent_count": 4,
+    "island_count_total": 79,
+    "island_cells_total": 148,
+    "continent_solidity_mean": 0.4189,
+    "relief_headroom": 0.4005,
+    "coast_complexity_index": 18.4682,
+    "coastline_cells": 1688,
+    "land_cells": 8354,
+    "ocean_mode_elev": -0.3277,
+    "land_mode_elev": 0.1923,
+    "land_band_0_50m_frac": 0.4561,
+    "land_band_500m_plus_frac": 0.1864,
+    "shelf_width_active_km": 341,
+    "shelf_width_passive_km": 682,
+    "interior_gradient_per_km": -1.8e-05,
+    "phasor_ridge_active_cells": 4039
+   }
+  },
+  "seed-400_detail-400": {
+   "seed": 400,
+   "detailSlider": 400,
+   "elapsedSec": 1.6,
+   "metrics": {
+    "continent_count": 5,
+    "island_count_total": 60,
+    "island_cells_total": 144,
+    "continent_solidity_mean": 0.3866,
+    "relief_headroom": 0.409,
+    "coast_complexity_index": 19.0326,
+    "coastline_cells": 1726,
+    "land_cells": 8224,
+    "ocean_mode_elev": -0.3472,
+    "land_mode_elev": 0.1663,
+    "land_band_0_50m_frac": 0.4182,
+    "land_band_500m_plus_frac": 0.2223,
+    "shelf_width_active_km": 455,
+    "shelf_width_passive_km": 796,
+    "interior_gradient_per_km": 3.7e-05,
+    "phasor_ridge_active_cells": 4580
+   }
+  },
+  "seed-42_detail-600": {
+   "seed": 42,
+   "detailSlider": 600,
+   "elapsedSec": 10.8,
+   "metrics": {
+    "continent_count": 4,
+    "island_count_total": 345,
+    "island_cells_total": 1178,
+    "continent_solidity_mean": 0.4411,
+    "relief_headroom": 0.4376,
+    "coast_complexity_index": 28.4671,
+    "coastline_cells": 6718,
+    "land_cells": 55692,
+    "ocean_mode_elev": -0.3342,
+    "land_mode_elev": 0.1858,
+    "land_band_0_50m_frac": 0.4012,
+    "land_band_500m_plus_frac": 0.239,
+    "shelf_width_active_km": 266,
+    "shelf_width_passive_km": 443,
+    "interior_gradient_per_km": 0.000679,
+    "phasor_ridge_active_cells": 33882
+   }
+  },
+  "seed-100_detail-600": {
+   "seed": 100,
+   "detailSlider": 600,
+   "elapsedSec": 11.0,
+   "metrics": {
+    "continent_count": 4,
+    "island_count_total": 436,
+    "island_cells_total": 1249,
+    "continent_solidity_mean": 0.4625,
+    "relief_headroom": 0.4004,
+    "coast_complexity_index": 32.431,
+    "coastline_cells": 7711,
+    "land_cells": 56533,
+    "ocean_mode_elev": -0.2172,
+    "land_mode_elev": 0.1858,
+    "land_band_0_50m_frac": 0.4913,
+    "land_band_500m_plus_frac": 0.1744,
+    "shelf_width_active_km": 266,
+    "shelf_width_passive_km": 355,
+    "interior_gradient_per_km": 0.000576,
+    "phasor_ridge_active_cells": 33270
+   }
+  },
+  "seed-200_detail-600": {
+   "seed": 200,
+   "detailSlider": 600,
+   "elapsedSec": 10.8,
+   "metrics": {
+    "continent_count": 4,
+    "island_count_total": 324,
+    "island_cells_total": 1190,
+    "continent_solidity_mean": 0.3733,
+    "relief_headroom": 0.3744,
+    "coast_complexity_index": 30.0636,
+    "coastline_cells": 7085,
+    "land_cells": 55539,
+    "ocean_mode_elev": -0.2172,
+    "land_mode_elev": 0.1923,
+    "land_band_0_50m_frac": 0.4953,
+    "land_band_500m_plus_frac": 0.1607,
+    "shelf_width_active_km": 266,
+    "shelf_width_passive_km": 310,
+    "interior_gradient_per_km": 0.000551,
+    "phasor_ridge_active_cells": 27234
+   }
+  },
+  "seed-400_detail-600": {
+   "seed": 400,
+   "detailSlider": 600,
+   "elapsedSec": 10.4,
+   "note": "REPRODUCIBLE COLLISION with seed-42_detail-600 (see _anomalies); worker verified received seed=400",
+   "metrics": {
+    "continent_count": 4,
+    "island_count_total": 345,
+    "island_cells_total": 1178,
+    "continent_solidity_mean": 0.4411,
+    "relief_headroom": 0.4376,
+    "coast_complexity_index": 28.4671,
+    "coastline_cells": 6718,
+    "land_cells": 55692,
+    "ocean_mode_elev": -0.3342,
+    "land_mode_elev": 0.1858,
+    "land_band_0_50m_frac": 0.4012,
+    "land_band_500m_plus_frac": 0.239,
+    "shelf_width_active_km": 266,
+    "shelf_width_passive_km": 443,
+    "interior_gradient_per_km": 0.000679,
+    "phasor_ridge_active_cells": 33882
+   }
+  }
+ }
+}

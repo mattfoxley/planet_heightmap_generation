@@ -2,8 +2,9 @@
 
 ## Phase 0 — Baseline and Inventory
 
-- [ ] Capture deterministic baseline seeds at multiple detail levels. _(BLOCKED: puppeteer absent, Node 12; plan in inventory §11 — capture via served instance + browser)_
-- [ ] Export baseline heightmaps and metrics for current Earth behavior. _(pending, see above)_
+- [x] Capture deterministic baseline seeds at multiple detail levels. _(seeds 42/100/200/400 at sN 400 & 600, via in-app browser since puppeteer absent → `tuning/baselines/earth/baselines.json`)_
+- [x] Export baseline **metrics** for current Earth behavior. _(window.__terrainMetrics scorecard captured; heightmap PNG export deferred — needs download automation, noted in baselines `_pending`)_
+  - ⚠ **Baseline finding:** seeds 42 & 400 produce identical terrain at detail 600 but differ at detail 400 (reproducible; worker verified received seed=400). Genuine seed×detail interaction → threatens success-criterion #6. `TODO(investigate)` rng.js + fine-mesh seed path; Phase-1 deterministic-seed tests must account for it.
 - [x] Search repository for:
   - [x] `6371` _(inventory §2)_
   - [x] constants described as kilometers _(§3)_
@@ -16,8 +17,9 @@
 - [x] Classify every relevant constant by unit category. _(scale-coupled constants classified; remainder noted DIMENSIONLESS in §9)_
 - [x] Mark uncertain constants for empirical investigation. _(§12)_
 
-> Phase 0 gate: **inventory complete; baseline artifacts pending.** Do not start Phase 1
-> algorithm changes until baselines are captured (see inventory §11).
+> Phase 0 gate: **OPEN** — inventory complete + Earth baselines captured (`tuning/baselines/earth/`).
+> Phase 1 (physical-scale infrastructure: profiles + conversion helpers + guard test) may begin.
+> Carry forward: heightmap-PNG baseline export, and the seed×detail collision investigation.
 
 ## Phase 1 — Physical Scale Infrastructure
 
