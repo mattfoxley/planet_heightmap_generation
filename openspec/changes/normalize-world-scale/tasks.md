@@ -213,6 +213,21 @@
 - [~] Measure feature widths / relief / slope / drainage / basins / spectral. _(the `__terrainMetrics` scorecard captures relief headroom, land/ocean mode, hypsometry, land-elevation bands, shelf widths, interior gradient, erosion-slope correlation, coast complexity — used for the coherence check. Full percentile/spectral/drainage-density distributions + 10–20-seed sweep → deferred research task.)_
 - [ ] Run full parameter matrix from `experiments.md` / produce visual contact sheets / document rejected regions. _(OUT OF SCOPE by choice — separate research effort; the activation + baseline are locked and coherent.)_
 
+### Phase 10 relative-scale tuning (follow-up experiment — proportional mountains)
+
+> Triggered by a correct observation that compact mountains were disproportionate (tall/thin). Root causes
+> found + fixed: (1) `elevToHeightKm` hardcoded the Earth 6 km curve so compact's height never applied
+> (fixed — profile-aware); (2) no relative-scale metrics existed (added: physical height-km + slope-degree
+> percentiles + mountain-run-width). Measured sweeps (warm-worker, seed 42 @ detail 400, via `profileOverride`):
+
+- [x] Instrument physical HEIGHT (km) + SLOPE (degrees) + run-width metrics. _(terrain-metrics.js physicalScale)_
+- [x] Diagnose: current compact = peak 4 km, run 1.3 km, **slope p95 71° / max 88°** (vs Earth ref 6 km / 177 km / p95 ~1°). Confirmed the tall/thin spikes.
+- [x] Height sweep: `maxLandHeightKm` is the slope lever (4→71°, 2→55°, 1.5→47°, 1→35° p95). Terrain widths (`ridgeSpacing/envelope`) do NOT move run width (set by phasor 55 km + noise, not profile fields).
+- [x] Sculpt sweep @ 2.5 km: **thermal erosion is the flank-taming lever** — thermal 0.1→0.6 drops p95 47°→**31°** (angle-of-repose grinding of over-steep flanks). Roughness↓ + smoothing↑ help secondarily.
+- [x] **Locked tuned compact baseline:** `maxLandHeightKm 2.5` (+ clamps/typicalMountain 1.0) and a recommended `sculpt` preset (noise 0.1, smoothing 0.3, thermal 0.6, hydraulic 0.5, ridge 0.3) applied to the sliders on profile-select (generate.js). Result: broad massifs, **p95 ≈ 31°**, peaks to ~2.5 km where the base is wide (effective p99 ≈ 1.3 km) — the "taller + broad ranges" target.
+- [~] Re-validate the baked baseline in-browser. _(Sweeps measured the exact config; final baked-profile confirmation was impeded by this session's degraded worker — user can verify in a fresh browser: `?profile=compact-40km` → `window.__terrainMetrics.slope_deg_p95`.)_
+- [ ] Widen mountain RUN width into multi-km ranges (phasor/detail wavelengths → profile-scalable). _(Follow-up: runs are ~1.3 km; thermal gives broad massifs but the fine texture wavelength is still fixed. Optional further experiment.)_
+
 ## Phase 11 — Earth Regression
 
 - [ ] Run Earth profile against stored baselines.

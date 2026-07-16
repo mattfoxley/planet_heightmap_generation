@@ -931,6 +931,26 @@ function getSelectedProfileId() {
     catch (e) { return 'legacy'; }
 }
 
+// Phase 10: apply a profile's recommended sculpt preset to the sculpt sliders when it is selected, so a
+// physical profile (e.g. compact-40km) starts from its measured-coherent sculpting (low roughness + strong
+// thermal erosion → broad massifs, ~31° slopes). Runs once on load; the user can still adjust the sliders.
+function applyProfileSculptDefaults() {
+    try {
+        const sc = getWorldProfile(getSelectedProfileId()).sculpt;
+        if (!sc) return;
+        const map = { noise: 'sNs', smoothing: 'sS', thermalErosion: 'sTEr', hydraulicErosion: 'sHEr', ridgeSharpening: 'sRs' };
+        for (const key in map) {
+            if (sc[key] == null) continue;
+            const el = document.getElementById(map[key]);
+            if (el) { el.value = sc[key]; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+        }
+    } catch (e) { /* sliders not present / no preset — ignore */ }
+}
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyProfileSculptDefaults);
+    else applyProfileSculptDefaults();
+}
+
 export function reapplyViaWorker(onDone, skipClimate = false) {
     if (!worker || !state.curData) return;
 

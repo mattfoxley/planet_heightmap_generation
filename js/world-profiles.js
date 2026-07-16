@@ -43,15 +43,21 @@ export const COMPACT_40KM_PROFILE = {
   climateEnabled: false,   // Earth latitude climate invalid on an interior sphere (design §13)
 
   elevation: {
-    // EXPERIMENTAL curve endpoints (Phase 10 tuning). maxLandHeightKm = exceptional peak; ocean scale
-    // chosen so a deep abyss (~elevNorm -0.33) reaches ~-2 km. TODO(experiment): tune against relief targets.
-    maxLandHeightKm: 4.0, oceanScaleKmPerUnit: 6.0,
+    // Phase 10 TUNED (measured relative-scale sweep, seed 42 @ detail 400): maxLandHeightKm = tallest
+    // massif. Peaks reach this only where the base is wide enough (thermal erosion at angle-of-repose
+    // grinds narrow spikes down), so effective p99 ≈ 1.3 km with the widest massifs at ~2.5 km — coherent
+    // ~31° p95 slopes on the 20 km-radius sphere (down from 71° at 4 km / default sculpt).
+    maxLandHeightKm: 2.5, oceanScaleKmPerUnit: 6.0,
     maxOceanDepthKm: 2.0,
     typicalLandKm: 0.25,
-    typicalMountainKm: 1.5,
-    exceptionalPeakKm: 4.0,
-    hardPeakClampKm: 4.25,
+    typicalMountainKm: 1.0,
+    exceptionalPeakKm: 2.5,
+    hardPeakClampKm: 2.75,
   },
+  // Phase 10 recommended sculpting for a coherent compact look (measured): low roughness + moderate
+  // smoothing + strong thermal erosion (angle-of-repose flank grinding) → broad massifs, ~31° p95 slopes.
+  // Applied to the sculpt sliders when the profile is selected (generate.js); the user can still adjust.
+  sculpt: { noise: 0.1, smoothing: 0.3, thermalErosion: 0.6, hydraulicErosion: 0.5, ridgeSharpening: 0.3 },
   tectonics: {
     plateCountRange: [8, 18], initialPlateCount: 12,
     superPlateCountRange: [3, 6], initialSuperPlateCount: 4,
