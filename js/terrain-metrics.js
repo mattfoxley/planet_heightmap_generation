@@ -852,15 +852,38 @@ function physicalScale(ctx) {
     const widths = components.filter(c => c.cells.size >= 4).map(c => Math.sqrt(c.cells.size) * edgeKm).sort((a, b) => a - b);
     const mtnWidth = widths.length ? widths[Math.floor(0.5 * widths.length)] : 0;
 
+    // Land-elevation band fractions (spec terrain classes, metres). Fraction OF LAND cells.
+    const nLand = heights.length;
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (const h of heights) {           // h in km
+        const m = h * 1000;
+        if (m < 150) b0++; else if (m < 400) b1++; else if (m < 800) b2++;
+        else if (m < 1400) b3++; else if (m < 2500) b4++; else if (m < 3500) b5++; else b6++;
+    }
+    const f = (n) => +(n / nLand).toFixed(3);
+
     return {
-        peak_height_km_max: +hp(1).toFixed(3),
-        peak_height_km_p99: +hp(0.99).toFixed(3),
-        peak_height_km_p50: +hp(0.50).toFixed(3),
+        land_fraction: +(nLand / N).toFixed(3),
+        height_km_p50: +hp(0.50).toFixed(3),
+        height_km_p75: +hp(0.75).toFixed(3),
+        height_km_p90: +hp(0.90).toFixed(3),
+        height_km_p99: +hp(0.99).toFixed(3),
+        height_km_max: +hp(1).toFixed(3),
+        // spec bands (fraction of land): lowland / plains / hills / uplands / mountain / high / exceptional
+        band_lowland_0_150m: f(b0), band_plains_150_400m: f(b1), band_hills_400_800m: f(b2),
+        band_uplands_800_1400m: f(b3), band_mountain_1400_2500m: f(b4),
+        band_high_2500_3500m: f(b5), band_exceptional_3500m_plus: f(b6),
         slope_deg_p50: sp(0.50) == null ? null : +sp(0.50).toFixed(2),
+        slope_deg_p75: sp(0.75) == null ? null : +sp(0.75).toFixed(2),
+        slope_deg_p90: sp(0.90) == null ? null : +sp(0.90).toFixed(2),
         slope_deg_p95: sp(0.95) == null ? null : +sp(0.95).toFixed(2),
         slope_deg_max: sp(1) == null ? null : +sp(1).toFixed(2),
         mountain_run_width_km: +mtnWidth.toFixed(3),
         avg_edge_km: +edgeKm.toFixed(4),
+        // legacy aliases (kept for existing readers)
+        peak_height_km_max: +hp(1).toFixed(3),
+        peak_height_km_p99: +hp(0.99).toFixed(3),
+        peak_height_km_p50: +hp(0.50).toFixed(3),
     };
 }
 

@@ -45,9 +45,12 @@ ok('ocean depth: -0.3 → -3 km', approx(elevNormToHeightKm(-0.3, LEGACY_ELEVATI
 // compact profile endpoints
 {
   const ce = getWorldProfile('compact-40km').elevation;
-  ok('compact max land (e=1) → 4 km', approx(elevNormToHeightKm(1, ce), 4, 1e-12));
-  ok('compact 4 km → e≈1', approx(heightKmToElevNorm(4, ce), 1, 1e-6));
-  ok('compact ocean -0.33 → ~-2 km', approx(elevNormToHeightKm(-0.3333333, ce), -2, 1e-3));
+  // Tuning-robust: assert against the profile's own endpoints, not frozen numbers (values are art-directed).
+  ok('compact max land (e=1) → maxLandHeightKm', approx(elevNormToHeightKm(1, ce), ce.maxLandHeightKm, 1e-12));
+  ok('compact maxLandHeightKm → e≈1', approx(heightKmToElevNorm(ce.maxLandHeightKm, ce), 1, 1e-6));
+  ok('compact ocean is linear in oceanScaleKmPerUnit', approx(elevNormToHeightKm(-0.3333333, ce), -0.3333333 * ce.oceanScaleKmPerUnit, 1e-9));
+  // hypsometricExponent (if set) lifts the median: g(0.5) with the gentler curve exceeds the legacy g(0.5).
+  ok('compact curve gentler than legacy (higher mid)', ce.hypsometricExponent == null || landHeightShape(0.5, ce) > landHeightShape(0.5));
 }
 
 // land shape monotonic increasing on [0,1]

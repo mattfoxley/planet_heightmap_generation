@@ -43,21 +43,31 @@ export const COMPACT_40KM_PROFILE = {
   climateEnabled: false,   // Earth latitude climate invalid on an interior sphere (design §13)
 
   elevation: {
-    // Phase 10 TUNED (measured relative-scale sweep, seed 42 @ detail 400): maxLandHeightKm = tallest
-    // massif. Peaks reach this only where the base is wide enough (thermal erosion at angle-of-repose
-    // grinds narrow spikes down), so effective p99 ≈ 1.3 km with the widest massifs at ~2.5 km — coherent
-    // ~31° p95 slopes on the 20 km-radius sphere (down from 71° at 4 km / default sculpt).
-    maxLandHeightKm: 2.5, oceanScaleKmPerUnit: 6.0,
+    // Compact terrain spec (interior 40 km world). maxLandHeightKm is a RARE cap (exceptional summit),
+    // not a routine height. `hypsometricExponent` replaces the strongly bottom-heavy legacy t⁴(5−4t) curve
+    // with the gentler t^p so the land distribution is weighted to lowlands/uplands (median ~300–500 m)
+    // instead of crushing everything near sea level. Oceans are shallow (limited deep water on a 40 km world).
+    maxLandHeightKm: 4.0, hypsometricExponent: 1.6, oceanScaleKmPerUnit: 2.5,
     maxOceanDepthKm: 2.0,
-    typicalLandKm: 0.25,
-    typicalMountainKm: 1.0,
-    exceptionalPeakKm: 2.5,
-    hardPeakClampKm: 2.75,
+    typicalLandKm: 0.4,          // median land target (spec: 300–500 m)
+    typicalMountainKm: 1.5,
+    highMountainKm: 2.8,
+    exceptionalPeakKm: 4.0,
+    hardPeakClampKm: 4.2,
   },
-  // Phase 10 recommended sculpting for a coherent compact look (measured): low roughness + moderate
-  // smoothing + strong thermal erosion (angle-of-repose flank grinding) → broad massifs, ~31° p95 slopes.
-  // Applied to the sculpt sliders when the profile is selected (generate.js); the user can still adjust.
-  sculpt: { noise: 0.1, smoothing: 0.3, thermalErosion: 0.6, hydraulicErosion: 0.5, ridgeSharpening: 0.3 },
+  // Compact-spec erosion balance: moderate hydraulic, LOW-moderate thermal, very low ridge sharpening,
+  // light smoothing, low roughness (noise modifies forms, doesn't define them). Glacial off. Applied to
+  // the sculpt sliders on profile-select (generate.js); the user can still adjust.
+  sculpt: {
+    // Measured balance (seed 42 @ detail 400): thermal 0.5 tames upper-percentile slopes (p90 ≈ 30°,
+    // p95 ≈ 41°) while keeping the spec hypsometry (median ~315 m, max ~3.2 km). Raise thermal toward
+    // 0.65 for gentler/shorter mountains, lower it toward 0.3 for taller/steeper — the tall-peak vs
+    // sane-slope trade-off is inherent until broad-uplift mountain generation exists (see docs).
+    noise: 0.15, smoothing: 0.2, thermalErosion: 0.5, hydraulicErosion: 0.35, ridgeSharpening: 0.12,
+    // generation sliders: max land coverage (landCoverage slider only reaches ~42% land — see limitation
+    // note; true mostly-land needs land-biased plate assignment), few coherent plates, few large continents.
+    landCoverage: 0.9, plates: 12, continents: 3,
+  },
   tectonics: {
     plateCountRange: [8, 18], initialPlateCount: 12,
     superPlateCountRange: [3, 6], initialSuperPlateCount: 4,

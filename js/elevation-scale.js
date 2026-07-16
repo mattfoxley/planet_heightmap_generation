@@ -17,8 +17,15 @@ import { clamp } from './world-scale.js';
 // Reproduces color-map.js `elevToHeightKm`: land 6·t^4·(5-4t), ocean elev·10.
 export const LEGACY_ELEVATION = { maxLandHeightKm: 6, oceanScaleKmPerUnit: 10 };
 
-/** Land hypsometric shape g(t): [0,1] → [0,1]. */
-export function landHeightShape(t) {
+/**
+ * Land hypsometric shape g(t): [0,1] → [0,1], g(0)=0, g(1)=1, monotonic increasing.
+ * Default (legacy) is the strongly bottom-heavy t⁴(5−4t). A profile may set `hypsometricExponent` p to use
+ * the gentler power curve t^p instead — p<4 lifts the median (more uplands, fewer near-sea-level cells),
+ * which is how the compact profile reaches a 300–500 m median instead of ~25 m. Still invertible (monotonic).
+ */
+export function landHeightShape(t, elev) {
+  const p = elev && elev.hypsometricExponent;
+  if (p != null) return Math.pow(t, p);
   const t2 = t * t;
   return t2 * t2 * (5 - 4 * t);
 }
@@ -26,7 +33,7 @@ export function landHeightShape(t) {
 /** NORMALIZED_ELEVATION → HEIGHT_KM. `elev` is an elevation profile ({maxLandHeightKm, oceanScaleKmPerUnit}). */
 export function elevNormToHeightKm(elevNorm, elev = LEGACY_ELEVATION) {
   if (elevNorm <= 0) return elevNorm * elev.oceanScaleKmPerUnit;
-  return elev.maxLandHeightKm * landHeightShape(Math.min(elevNorm, 1));
+  return elev.maxLandHeightKm * landHeightShape(Math.min(elevNorm, 1), elev);
 }
 
 /**
@@ -40,7 +47,7 @@ export function heightKmToElevNorm(heightKm, elev = LEGACY_ELEVATION) {
   let lo = 0, hi = 1;
   for (let i = 0; i < 60; i++) {
     const mid = 0.5 * (lo + hi);
-    if (landHeightShape(mid) < target) lo = mid; else hi = mid;
+    if (landHeightShape(mid, elev) < target) lo = mid; else hi = mid;
   }
   return 0.5 * (lo + hi);
 }
