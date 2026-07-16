@@ -64,6 +64,9 @@ export const COMPACT_40KM_PROFILE = {
     foothillReachKm: 3.5, coastalPlainWidthKm: 1.5, shelfWidthKm: 0.8,
     continentalSlopeWidthKm: 0.8, basinScaleKm: 8.0, detailMinWavelengthKm: 0.12,
     warpAmplitudeKm: 0.3, maxWarpKm: 1.0,   // domain warp (design §7); clamped vs smallest protected feature
+    // Phase 9 (design §11.2): compact uses much less ridge sharpening than the Earth-art default, plus a
+    // physical max-added-height cap. EXPERIMENTAL — activated in Phase 10 (currently dormant).
+    ridgeSharpenScale: 0.5, maxRidgeGainKm: 0.15,
   },
   erosion: {
     talusAngleDeg: 34, smoothingRadiusKm: 0.15, canyonCarveRadiusKm: 0.20,

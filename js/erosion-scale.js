@@ -66,3 +66,20 @@ export function canyonCarveRadiusHops(physicalRadiusHops, pathLength, legacyFrac
   if (physicalRadiusHops != null && physicalRadiusHops > 0) return Math.max(minHops, Math.round(physicalRadiusHops));
   return Math.max(minHops, Math.ceil(pathLength * legacyFrac));
 }
+
+/**
+ * §11.2 — cap the height a sharpening/uplift step may ADD above a baseline (the "maximum added height"
+ * physical cap for ridge sharpening). Units follow the caller (km, or normalized when pre-converted).
+ * Default `maxAdded = Infinity` → no-op (legacy path unchanged).
+ */
+export function clampAddedHeight(proposedNew, baseHeight, maxAdded = Infinity) {
+  return (maxAdded !== Infinity && proposedNew - baseHeight > maxAdded) ? baseHeight + maxAdded : proposedNew;
+}
+
+/**
+ * §11.2 — smallest wavelength (km) that resolves to at least `minCells` cells at this mesh resolution.
+ * Detail noise below this is under-resolved (aliased). Used to audit / clamp detail-noise wavelengths.
+ */
+export function minResolvableWavelengthKm(averageEdgeKm, minCells) {
+  return averageEdgeKm * minCells;
+}

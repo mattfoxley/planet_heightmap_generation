@@ -23,7 +23,7 @@ import {
     DETAIL_NOISE_WARP_FREQ, DETAIL_NOISE_WARP_AMP, DETAIL_NOISE_WARP_OCTAVES,
     DETAIL_NOISE_DAMPEN_STRENGTH,
 } from './terrain-config.js';
-import { canyonCarveRadiusHops } from './erosion-scale.js';
+import { canyonCarveRadiusHops, clampAddedHeight } from './erosion-scale.js';
 
 /**
  * Inline binary min-heap keyed on an external Float32Array of priorities.
@@ -784,7 +784,7 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
  * Ridge sharpening — pushes cells that sit above their neighborhood average
  * further upward, accentuating ridgelines without creating unrealistic spikes.
  */
-export function sharpenRidges(mesh, r_elevation, r_isOcean, iterations, strength) {
+export function sharpenRidges(mesh, r_elevation, r_isOcean, iterations, strength, maxAddedNorm = Infinity) {
     const N = mesh.numRegions;
     const { adjOffset, adjList } = mesh;
 
@@ -813,9 +813,12 @@ export function sharpenRidges(mesh, r_elevation, r_isOcean, iterations, strength
             if (h > avg) {
                 // Ridge sharpening: push peaks up
                 let h_new = h + (h - avg) * strength;
-                // Clamp: don't exceed 1.5x original elevation
+                // Clamp: don't exceed 1.5x original elevation (relative multiplier cap, design §11.2)
                 const cap = original[r] * RIDGE_SHARPEN_CAP;
                 if (h_new > cap) h_new = cap;
+                // Phase 9 (design §11.2): optional physical maximum-added-height cap (normalized units;
+                // caller pre-converts km). Default Infinity → legacy no-op.
+                if (maxAddedNorm !== Infinity) h_new = clampAddedHeight(h_new, original[r], maxAddedNorm);
                 tmp[r] = h_new;
             } else if (h < avg) {
                 // Valley deepening: push valleys down (weaker than ridge sharpening)

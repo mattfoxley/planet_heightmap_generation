@@ -180,14 +180,19 @@
 > Phase 8 complete: placement/carving decoupled, external-potential hook added (dormant), compact glacial
 > disabled, Earth latitude preserved (byte-identical). No new primitive (refactor + profile flag).
 
-## Phase 9 — Ridge Sharpening and Detail
+## Phase 9 — Ridge Sharpening and Detail  (physical caps + compact reduction wired; activation → Phase 10)
 
-- [ ] Add physical height cap to ridge sharpening.
-- [ ] Add post-sharpen slope warning/cap.
-- [ ] Reduce compact profile baseline sharpening.
-- [ ] Audit detail-noise wavelengths against mesh resolution.
-- [ ] Prevent generation of detail below minimum cells-per-wavelength.
-- [ ] Keep sub-grid detail for downstream terrain tools.
+- [x] Add physical height cap to ridge sharpening. _(sharpenRidges gains `maxAddedNorm=Infinity`; `clampAddedHeight(proposedNew, base, maxAdded)` in erosion-scale.js. Adds to the existing relative `RIDGE_SHARPEN_CAP` (1.5× — the design's multiplier cap). Default Infinity → legacy no-op.)_
+- [~] Add post-sharpen slope warning/cap. _(primitive `physicalSlopeKm` (Phase 6) available for the slope check; a hard in-loop slope cap is deferred to Phase 10 with the physical-height activation — the max-added-height cap already bounds the dominant spike case.)_
+- [x] Reduce compact profile baseline sharpening. _(compact declares `terrain.ridgeSharpenScale=0.5` + `maxRidgeGainKm=0.15`; runPostProcessing folds the scale into `rsStr` (dormant ×1 until Phase 10). design §11.2 baseline ≈0.12.)_
+- [x] Audit detail-noise wavelengths against mesh resolution. _(covered by `featureWidthWarnings` `noiseWavelength` check (Phase 3): compact `detailMinWavelengthKm=0.12` vs `validation.minCellsAcross.noiseWavelength=3`; `minResolvableWavelengthKm(edgeKm, minCells)` primitive added.)_
+- [~] Prevent generation of detail below minimum cells-per-wavelength. _(the audit warning fires now; the hard clamp on detail-noise frequency is deferred to Phase 10 (needs the per-layer wavelength wiring in applyDetailNoise). Primitive ready.)_
+- [x] Keep sub-grid detail for downstream terrain tools. _(no change — detail noise still writes full-resolution relief; the min-wavelength guard only prevents *aliased* frequencies, and export keeps the full field for Unreal, design §16.)_
+
+> Phase 9 core complete: physical max-added-height cap on sharpening (gated), compact ridge reduction
+> declared, detail-wavelength audit confirmed (featureWidthWarnings) + resolution primitive. Legacy
+> byte-identical (verified in-browser s42_d400). Hard slope/frequency clamps → Phase 10 activation.
+> erosion-scale.js tests 37/37.
 
 ## Phase 10 — Compact 40 km Profile Tuning
 

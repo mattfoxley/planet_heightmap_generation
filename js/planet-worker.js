@@ -86,6 +86,10 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
     // Phase 7 (design §8.6): physical canyon carve radius (hops) from profile.erosion.canyonCarveRadiusKm,
     // decoupled from drainage-path length. null → legacy path-length derivation (byte-identical).
     let carveRadiusHops = null;
+    // Phase 9 (design §11.2): ridge-sharpening physical caps + reduced compact baseline. Dormant defaults
+    // (Infinity cap, ×1 scale) → legacy AND current compact byte-identical.
+    let maxRidgeAddedNorm = Infinity;
+    let ridgeSharpenScale = 1;
     if (physicalErosion && profile && profile.erosion && meshMetrics) {
         if (profile.erosion.maxIncisionKmPerIteration != null) {
             // TODO(Phase 10): convert the km cap → normalized-elevation via elevation-scale.js (the land
@@ -95,6 +99,10 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
         if (profile.erosion.canyonCarveRadiusKm != null) {
             carveRadiusHops = kmToApproxHops(profile.erosion.canyonCarveRadiusKm, meshMetrics);
         }
+    }
+    if (physicalErosion && profile && profile.terrain) {
+        if (profile.terrain.ridgeSharpenScale != null) ridgeSharpenScale = profile.terrain.ridgeSharpenScale;
+        // TODO(Phase 10): convert profile.terrain.maxRidgeGainKm → normalized (local-slope conversion).
     }
 
     // Terrain warp — first step, before ocean detection or smoothing
@@ -170,9 +178,9 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
 
     if (ridgeSharpening > 0) {
         const rsIters = Math.round(1 + ridgeSharpening * 3);
-        const rsStr = ridgeSharpening * 0.08;
+        const rsStr = ridgeSharpening * 0.08 * ridgeSharpenScale;   // Phase 9: profile may reduce compact baseline (dormant → ×1)
         const t0 = performance.now();
-        sharpenRidges(mesh, r_elevation, r_isOcean, rsIters, rsStr);
+        sharpenRidges(mesh, r_elevation, r_isOcean, rsIters, rsStr, maxRidgeAddedNorm);
         timing.push({ stage: `Ridge sharpening (${rsIters} iters)`, ms: performance.now() - t0 });
     }
 

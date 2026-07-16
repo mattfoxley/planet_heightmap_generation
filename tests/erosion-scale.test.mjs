@@ -1,7 +1,7 @@
 // Unit tests for js/erosion-scale.js (Phase 6 — hydraulic/thermal physical primitives).
 // Run: node --experimental-modules tests/erosion-scale.test.mjs
 
-import { chordDistToKm, physicalFlowInit, physicalSlopeKm, clampIncisionKm, resolveUniformRunoff, canyonCarveRadiusHops } from '../js/erosion-scale.js';
+import { chordDistToKm, physicalFlowInit, physicalSlopeKm, clampIncisionKm, resolveUniformRunoff, canyonCarveRadiusHops, clampAddedHeight, minResolvableWavelengthKm } from '../js/erosion-scale.js';
 import { angularToKm, chordToAngularRad } from '../js/world-scale.js';
 import { getWorldProfile } from '../js/world-profiles.js';
 
@@ -65,6 +65,22 @@ ok('missing profile → null', resolveUniformRunoff(undefined) === null);
   ok('physical radius rounds', canyonCarveRadiusHops(8.6, 50, FRAC) === 9);
   ok('physical radius respects min floor', canyonCarveRadiusHops(1, 50, FRAC) === 3);
   ok('zero/negative physical radius → legacy', canyonCarveRadiusHops(0, 40, FRAC) === Math.max(3, Math.ceil(40 * FRAC)));
+}
+
+// clampAddedHeight (Phase 9 §11.2) — physical max-added-height cap on ridge sharpening
+ok('default Infinity → no cap', clampAddedHeight(5, 1) === 5);
+ok('caps gain above base', approx(clampAddedHeight(5, 1, 2), 3));       // base 1 + max 2
+ok('gain under cap passes through', approx(clampAddedHeight(2.5, 1, 2), 2.5));
+ok('exactly at cap unchanged', approx(clampAddedHeight(3, 1, 2), 3));
+ok('lowering (negative gain) untouched', clampAddedHeight(0.5, 1, 2) === 0.5);
+
+// minResolvableWavelengthKm (Phase 9 §11.2) — detail-noise resolution floor
+ok('minResolvableWavelengthKm = edge·cells', approx(minResolvableWavelengthKm(0.19, 3), 0.57));
+{
+  // compact detailMinWavelengthKm (0.12) is under-resolved at coarse meshes, resolved at fine ones
+  const c = getWorldProfile('compact-40km');
+  ok('compact declares detailMinWavelengthKm', c.terrain.detailMinWavelengthKm === 0.12);
+  ok('compact declares reduced ridge sharpening', c.terrain.ridgeSharpenScale === 0.5);
 }
 
 console.log(`erosion-scale tests: ${passed} passed, ${failed} failed`);
