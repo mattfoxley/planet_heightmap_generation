@@ -81,3 +81,13 @@ export function warpKmToAngular(warpKm, radiusKm) {
 export function clampWarpKm(warpKm, maxWarpKm = Infinity, smallestProtectedFeatureKm = Infinity) {
   return Math.min(warpKm, maxWarpKm, 0.25 * smallestProtectedFeatureKm);
 }
+
+/** Physical slope ratio (rise/run, both in km) → angle in degrees. */
+export function slopeRatioToAngleDeg(ratio) {
+  return Math.atan(ratio) * 180 / Math.PI;
+}
+
+/** Talus angle (degrees) → slope-ratio threshold = tan(angle) (design §9). */
+export function talusSlopeFromAngle(deg) {
+  return Math.tan(deg * Math.PI / 180);
+}

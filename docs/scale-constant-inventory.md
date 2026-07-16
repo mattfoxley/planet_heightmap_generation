@@ -150,7 +150,7 @@ Earth-profile reference for the Phase 11 regression and the "legacy parity" gate
 ## 12. Uncertain constants requiring experiment (do not guess)
 
 1. ~~`scaleFactor` exact formula + reference region count (§4)~~ **RESOLVED (Phase 3):** `scaleFactor = √(numRegions/10000)` (elevation.js:477, `COLLISION_DT_REF_REGIONS`=10000). ⇒ each `*_BASE` unit = π·radiusKm/100 km (~200.06 km @ Earth). km-based conversion (`js/terrain-widths.js`) reproduces `round(BASE·scaleFactor)` EXACTLY (max hop diff 0 across 7 resolutions — tests/terrain-widths.test.mjs).
-2. Thermal talus threshold + hydraulic slope units (§6) — read `terrain-post.js`.
+2. ~~Thermal talus threshold + hydraulic slope units (§6)~~ **RESOLVED (Phase 5):** thermal (erodeComposite) uses `slope = (normalizedElev diff) / neighborChordDist` with `talusSlope = 1.2 − thermalErosion·0.4`, `kThermal = thermalErosion·0.15` — i.e. NON-physical slope (normalized-elev per unit-sphere chord). Physical mode (`tan(talusAngleDeg)` + heightKm/edgeKm + km-space transfer) is a BEHAVIORAL change → deferred to Phase 10 (needs profile selector + tuning; helpers `talusSlopeFromAngle`/`slopeRatioToAngleDeg` ready; transfer clamp added).
 3. `PHASOR_WARP_AMPLITUDE` true km at Earth radius vs the "~38 km" comment (§3/§7).
 4. km↔hops conversion accuracy vs measured feature widths (§4) — Phase 3 validation.
 5. Normalized-elevation → km curve endpoints; calibrate against `MAX_OCEAN_ARC_ELEV` "6 km" anchor (§5).

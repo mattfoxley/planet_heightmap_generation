@@ -400,7 +400,7 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
     hIters, K, m, dt,
     tIters, talusSlope, kThermal,
     gIters, glacialStrength,
-    neighborDist)
+    neighborDist, maxThermalTransfer = Infinity)
 {
     gIters = gIters || 0;
     glacialStrength = glacialStrength || 0;
@@ -713,7 +713,9 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
                     totalSlopeWeighted += excVal[k] * excSlope[k];
                 }
 
-                const transfer = kThermal * totalExcess * THERMAL_TRANSFER_FRAC;
+                // Phase 5 (design §9): optional max-transfer-per-iteration clamp. Default Infinity → legacy
+                // no-op; physical profiles pass a finite cap to prevent catastrophic thermal steps.
+                const transfer = Math.min(maxThermalTransfer, kThermal * totalExcess * THERMAL_TRANSFER_FRAC);
                 if (totalSlopeWeighted > 0) {
                     for (let k = 0; k < excCount; k++) {
                         const share = (excVal[k] * excSlope[k] / totalSlopeWeighted) * transfer;

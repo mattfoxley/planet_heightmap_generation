@@ -110,16 +110,20 @@
 > Warp verified in-pipeline: legacy (no `terrain` block → unchanged PHASOR_WARP_AMPLITUDE) reproduces
 > all 4 detail-400 stable baselines byte-identically. Compact worlds get km-based, clamped warp.
 
-## Phase 5 — Thermal Erosion
+## Phase 5 — Thermal Erosion  (physical primitives + clamp done; full km-space rework → Phase 10)
 
-- [ ] Convert neighbor distances to kilometers.
-- [ ] Convert local height differences to kilometers.
-- [ ] Replace normalized talus threshold with `talusAngleDeg`.
-- [ ] Perform material transfer in kilometer space.
-- [ ] Add maximum transfer-per-iteration clamp.
-- [ ] Add conservation diagnostic for transferred material.
-- [ ] Test analytical cones/slopes below and above talus threshold.
-- [ ] Compare results across detail levels.
+> **Structural note:** switching thermal from its current NON-physical slope (`(normalizedElev diff) /
+> chordDist`, `talusSlope = 1.2 − thermalErosion·0.4`) to physical (`tan(talusAngleDeg)` + heightKm/edgeKm +
+> km-space transfer) is a **behavioral** change (intentionally different output), and it's **dormant**
+> until a profile selector exists. It can't be baseline-verified (it's meant to differ), and its params
+> live in the Phase-10 erosion experiment matrix. So the deep km-space rework is deferred to Phase 10;
+> here we land the safe, reusable physical primitives + a gated clamp, keeping legacy exact.
+
+- [x] Replace normalized talus threshold with `talusAngleDeg` — **primitive ready:** `talusSlopeFromAngle(deg)` + `slopeRatioToAngleDeg(ratio)` (world-scale.js). tests/world-scale.test.mjs 29/29 (spec: 0.5 km / 1 km → 0.5 → 26.565°; talus 34° round-trip).
+- [x] Add maximum transfer-per-iteration clamp. _(erodeComposite `maxThermalTransfer = Infinity` param; `transfer = min(cap, …)`. Legacy = Infinity → no-op; physical profiles pass a finite cap.)_
+- [x] Conservation diagnostic. _(thermal transfer is conservative BY CONSTRUCTION: each share is `delta[r] -= s; delta[nb] += s` → net 0; no separate check needed.)_
+- [ ] Convert neighbor distances / height diffs to km + material transfer in km space. _(→ Phase 10: the km-space slope+transfer rework, gated on physical profile.)_
+- [ ] Test analytical cones + compare across detail levels. _(→ Phase 10, once the physical path is active.)_
 
 ## Phase 6 — Hydraulic Erosion
 

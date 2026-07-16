@@ -5,7 +5,7 @@
 import {
   angularDistanceRad, chordToAngularRad, angularToKm, kmToAngular,
   averageEdgeAngleRad, computeMeshPhysicalMetrics, kmToApproxHops, cellsAcrossFeature,
-  warpKmToAngular, clampWarpKm,
+  warpKmToAngular, clampWarpKm, slopeRatioToAngleDeg, talusSlopeFromAngle,
 } from '../js/world-scale.js';
 import { getWorldProfile, DEFAULT_PROFILE_ID, listWorldProfileIds } from '../js/world-profiles.js';
 
@@ -50,6 +50,13 @@ ok('warp scales inversely with radius', approx(warpKmToAngular(1, 6371), 1 / 637
 ok('clampWarpKm caps at 0.25×feature', clampWarpKm(0.3, 1.0, 0.8) === 0.2);
 ok('clampWarpKm caps at maxWarpKm', clampWarpKm(5, 1.0, 100) === 1.0);
 ok('clampWarpKm passes when under all bounds', clampWarpKm(0.1, 1.0, 0.8) === 0.1);
+
+// physical slope / talus (design §9)
+ok('spec: 0.5km rise / 1km run → slope 0.5', approx(0.5 / 1.0, 0.5));
+ok('spec: slope 0.5 → 26.565°', approx(slopeRatioToAngleDeg(0.5), 26.565, 1e-3));
+ok('talus 45° → slope 1', approx(talusSlopeFromAngle(45), 1, 1e-12));
+ok('talus 26.565° → slope 0.5', approx(talusSlopeFromAngle(26.565), 0.5, 1e-4));
+ok('talus round-trip 34°', approx(slopeRatioToAngleDeg(talusSlopeFromAngle(34)), 34, 1e-9));
 
 // profiles
 ok('compact-40km radius = 20', getWorldProfile('compact-40km').radiusKm === 20);
