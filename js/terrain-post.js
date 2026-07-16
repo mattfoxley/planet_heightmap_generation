@@ -405,7 +405,7 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
     tIters, talusSlope, kThermal,
     gIters, glacialStrength,
     neighborDist, maxThermalTransfer = Infinity, maxIncisionNorm = Infinity, carveRadiusHops = null,
-    glaciationPotential = null)
+    glaciationPotential = null, flowInit = 1)
 {
     gIters = gIters || 0;
     glacialStrength = glacialStrength || 0;
@@ -646,9 +646,11 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
                 }
             }
 
-            // Flow accumulation (already sorted descending at top of iteration)
+            // Flow accumulation (already sorted descending at top of iteration).
+            // Phase 10 (design §8.3): physical mode seeds each cell with `flowInit = cellAreaKm2·runoff`
+            // (resolution-independent runoff volume) instead of the legacy unit `1`. flowInit defaults to 1.
             flow.fill(0);
-            for (let i = 0; i < landCount; i++) flow[landCells[i]] = 1;
+            for (let i = 0; i < landCount; i++) flow[landCells[i]] = flowInit;
 
             for (let i = 0; i < landCount; i++) {
                 const r = landCells[i];

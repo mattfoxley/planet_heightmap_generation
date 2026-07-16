@@ -194,24 +194,24 @@
 > byte-identical (verified in-browser s42_d400). Hard slope/frequency clamps → Phase 10 activation.
 > erosion-scale.js tests 37/37.
 
-## Phase 10 — Compact 40 km Profile Tuning
+## Phase 10 — Compact 40 km Profile Tuning  (ACTIVATION + validation done; full experiment matrix out of scope by choice)
 
-- [ ] Run parameter matrix from `experiments.md`.
-- [ ] Select 10–20 deterministic evaluation seeds.
-- [ ] Record runtime and memory.
-- [ ] Measure:
-  - [ ] feature widths
-  - [ ] relief percentiles
-  - [ ] slope percentiles
-  - [ ] drainage density
-  - [ ] river length distribution
-  - [ ] basin count
-  - [ ] endorheic area
-  - [ ] erosion incision
-  - [ ] terrain spectral distribution
-- [ ] Produce visual contact sheets.
-- [ ] Choose baseline compact profile.
-- [ ] Document rejected parameter regions.
+> **Scope decision:** the user chose "Activate + validate" over the full research-grade experiment
+> matrix. So this phase (a) turns ON physical erosion mode for compact — the payoff of all the Phase 5-9
+> infrastructure — and (b) validates that compact produces coherent terrain and locks a baseline. The
+> exhaustive parameter sweep / contact sheets / spectral analysis are deferred as a separate research task.
+
+- [x] **Activate physical erosion mode.** `profile.erosion.physical` gates it; compact = true, legacy/earthlike absent → OFF (byte-identical). When on:
+  - [x] Physical runoff: `flowInit = approximateCellAreaKm2 · uniformRunoff` (§8.3) → flow TOTALS resolution-independent (Σ area·runoff = landArea·runoff, vs legacy Σ1).
+  - [x] Stream-power K recalibrated: `K·flow^m` held at the reference mesh via `recalibratedHydraulicK` (§8.4) — magnitude anchored to the legacy look while flow is physical.
+  - [x] Incision clamp active: `maxIncisionKmPerIteration` → normalized via `kmCapToNorm` at the land operating reference.
+  - [x] Physical canyon carve radius active: `kmToApproxHops(canyonCarveRadiusKm)`.
+  - [x] Ridge sharpening reduced (`ridgeSharpenScale 0.5`) + physical max-added-height cap (`maxRidgeGainKm → kmCapToNorm`).
+- [x] **Choose / lock baseline compact profile.** The authored compact-40km values are validated coherent and locked as the baseline: radius 20, elevation {maxLand 4, ocean 6}, tectonics/terrain feature-km as declared, erosion {uniformRunoff 0.35, canyonCarveRadiusKm 0.20, maxIncision 0.05, physical:true}, ridgeSharpenScale 0.5.
+- [x] **Validate coherent terrain (activate+validate).** Compact s42 physical run: relief_headroom 0.45, erosion_slope_correlation **0.30** (drainage carved along slopes → real river networks), land_mode 0.19 / ocean_mode −0.35, interior_gradient 0.17/km, shelf 1 km, 20% land >500 m. No blowup / NaN, clean 2.2 s worker, renders as a coherent planet. Legacy re-verified byte-identical (74/8128/455/19.2889).
+- [~] Record runtime and memory. _(worker ≈ 2.2 s @ compact d400 noted; systematic profiling deferred.)_
+- [~] Measure feature widths / relief / slope / drainage / basins / spectral. _(the `__terrainMetrics` scorecard captures relief headroom, land/ocean mode, hypsometry, land-elevation bands, shelf widths, interior gradient, erosion-slope correlation, coast complexity — used for the coherence check. Full percentile/spectral/drainage-density distributions + 10–20-seed sweep → deferred research task.)_
+- [ ] Run full parameter matrix from `experiments.md` / produce visual contact sheets / document rejected regions. _(OUT OF SCOPE by choice — separate research effort; the activation + baseline are locked and coherent.)_
 
 ## Phase 11 — Earth Regression
 

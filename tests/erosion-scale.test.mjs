@@ -1,7 +1,8 @@
 // Unit tests for js/erosion-scale.js (Phase 6 — hydraulic/thermal physical primitives).
 // Run: node --experimental-modules tests/erosion-scale.test.mjs
 
-import { chordDistToKm, physicalFlowInit, physicalSlopeKm, clampIncisionKm, resolveUniformRunoff, canyonCarveRadiusHops, clampAddedHeight, minResolvableWavelengthKm } from '../js/erosion-scale.js';
+import { chordDistToKm, physicalFlowInit, physicalSlopeKm, clampIncisionKm, resolveUniformRunoff, canyonCarveRadiusHops, clampAddedHeight, minResolvableWavelengthKm, recalibratedHydraulicK, kmCapToNorm } from '../js/erosion-scale.js';
+import { heightKmToElevNorm } from '../js/elevation-scale.js';
 import { angularToKm, chordToAngularRad } from '../js/world-scale.js';
 import { getWorldProfile } from '../js/world-profiles.js';
 
@@ -81,6 +82,28 @@ ok('minResolvableWavelengthKm = edge·cells', approx(minResolvableWavelengthKm(0
   const c = getWorldProfile('compact-40km');
   ok('compact declares detailMinWavelengthKm', c.terrain.detailMinWavelengthKm === 0.12);
   ok('compact declares reduced ridge sharpening', c.terrain.ridgeSharpenScale === 0.5);
+}
+
+// recalibratedHydraulicK (Phase 10) — hold factor=K·flow^m at reference when flow becomes physical
+{
+  const baseK = 0.0003, cellArea = 0.0246, runoff = 0.35, m = 0.5;
+  const kPhys = recalibratedHydraulicK(baseK, cellArea, runoff, m);
+  // factor parity at reference: K_phys·(cellArea·runoff)^m === baseK·1^m
+  ok('K recalibration holds factor at reference', approx(kPhys * Math.pow(cellArea * runoff, m), baseK, 1e-12));
+  ok('smaller cells (finer mesh) → larger K', recalibratedHydraulicK(baseK, cellArea / 4, runoff, m) > kPhys);
+  ok('zero scale → baseK (no div-by-zero)', recalibratedHydraulicK(baseK, 0, runoff, m) === baseK);
+}
+
+// kmCapToNorm (Phase 10) — physical cap → normalized delta at an operating reference
+{
+  const elev = getWorldProfile('compact-40km').elevation; // maxLandHeightKm 4
+  const capNorm = kmCapToNorm(0.15, 1.5, elev);
+  ok('kmCapToNorm positive + < 1', capNorm > 0 && capNorm < 1);
+  // matches the explicit local-difference definition
+  ok('kmCapToNorm = |n(ref+cap) - n(ref)|', approx(capNorm, Math.abs(heightKmToElevNorm(1.65, elev) - heightKmToElevNorm(1.5, elev)), 1e-12));
+  ok('null cap → Infinity (no cap)', kmCapToNorm(null, 1.5, elev) === Infinity);
+  ok('NaN cap → Infinity', kmCapToNorm(NaN, 1.5, elev) === Infinity);
+  ok('larger km cap → larger norm delta', kmCapToNorm(0.3, 1.5, elev) > capNorm);
 }
 
 console.log(`erosion-scale tests: ${passed} passed, ${failed} failed`);

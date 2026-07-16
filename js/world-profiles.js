@@ -74,6 +74,8 @@ export const COMPACT_40KM_PROFILE = {
     // Phase 6 (design §8.3/§8.4): terrain-only runoff (climate disabled on the interior sphere) + physical
     // incision safety caps. EXPERIMENTAL — activated only when the physical erosion mode runs (Phase 10).
     uniformRunoff: 0.35, maxIncisionKmPerIteration: 0.05, maxReliefFractionPerIteration: 0.35,
+    physical: true,   // Phase 10: activate physical erosion mode (physical runoff + recalibrated K +
+                      // km-based incision/ridge caps + physical canyon radius). Legacy/earthlike omit this.
   },
   // Phase 8 (design §10): Earth latitude-driven glacier placement is invalid on an interior sphere, so
   // glacial erosion is OFF by default. A future habitat-climate system can supply a `glaciationPotential`

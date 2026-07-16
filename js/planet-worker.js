@@ -19,6 +19,7 @@ import { applyPlatePhysics, expandPlatePhysicsDebug } from './plate-physics.js';
 import { SUPER_PLATE_PHYSICS_MULT, DETAIL_NOISE_DAMPEN_STRENGTH } from './terrain-config.js';
 import { getWorldProfile } from './world-profiles.js';
 import { computeMeshPhysicalMetrics, kmToApproxHops } from './world-scale.js';
+import { resolveUniformRunoff, recalibratedHydraulicK, kmCapToNorm } from './erosion-scale.js';
 import { featureWidthWarnings } from './terrain-widths.js';
 import Delaunator from 'https://cdn.jsdelivr.net/npm/delaunator@5.0.1/+esm';
 
@@ -77,32 +78,32 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
     const { smoothing, glacialErosion, hydraulicErosion, thermalErosion, ridgeSharpening, terrainWarp } = params;
     const timing = [];
 
-    // Phase 6 (design §8.4): physical erosion hooks. DORMANT until Phase 10 enables physical erosion
-    // mode + runoff/K recalibration; legacy, earthlike, AND the current compact path all keep
-    // maxIncisionNorm = Infinity, so the erosion arithmetic is byte-identical. `profile`/`meshMetrics`
-    // are threaded now so Phase 10 can derive the caps without re-plumbing.
-    const physicalErosion = false; // TODO(Phase 10): enable per profile.erosion + climate/runoff wiring
-    let maxIncisionNorm = Infinity;
-    // Phase 7 (design §8.6): physical canyon carve radius (hops) from profile.erosion.canyonCarveRadiusKm,
-    // decoupled from drainage-path length. null → legacy path-length derivation (byte-identical).
-    let carveRadiusHops = null;
-    // Phase 9 (design §11.2): ridge-sharpening physical caps + reduced compact baseline. Dormant defaults
-    // (Infinity cap, ×1 scale) → legacy AND current compact byte-identical.
-    let maxRidgeAddedNorm = Infinity;
-    let ridgeSharpenScale = 1;
-    if (physicalErosion && profile && profile.erosion && meshMetrics) {
-        if (profile.erosion.maxIncisionKmPerIteration != null) {
-            // TODO(Phase 10): convert the km cap → normalized-elevation via elevation-scale.js (the land
-            // curve is nonlinear near sea level, so this is a local-slope conversion, not a global factor).
-            maxIncisionNorm = Infinity;
+    // Phase 10 (design §8-11): PHYSICAL EROSION MODE. Activated per `profile.erosion.physical` (compact).
+    // Legacy/earthlike omit it → physicalErosion false → every hook below stays at its legacy default
+    // (flowInit=1, K unchanged, Infinity caps, path-length carve, ×1 ridge scale) → byte-identical.
+    const physicalErosion = !!(profile && profile.erosion && profile.erosion.physical && meshMetrics);
+    let flowInit = 1;              // §8.3 physical runoff volume per cell (else legacy unit flow)
+    let hydraulicKScale = 1;       // §8.4 K recalibration factor (applied to hK below)
+    let maxIncisionNorm = Infinity; // §8.4 per-iteration incision clamp (normalized)
+    let carveRadiusHops = null;    // §8.6 physical canyon width (hops), decoupled from path length
+    let maxRidgeAddedNorm = Infinity; // §11.2 ridge max-added-height cap (normalized)
+    let ridgeSharpenScale = 1;     // §11.2 reduced compact baseline sharpening
+    if (physicalErosion) {
+        const er = profile.erosion, m = 0.5;
+        const refKm = (profile.elevation && profile.elevation.typicalMountainKm) || 1.0; // caps operate on land
+        const runoff = resolveUniformRunoff(profile);
+        if (runoff != null && meshMetrics.approximateCellAreaKm2 > 0) {
+            flowInit = meshMetrics.approximateCellAreaKm2 * runoff;
+            // Anchor erosion magnitude at this mesh (factor = K·flow^m held); flow TOTALS become
+            // resolution-independent (Σ cellArea·runoff = landArea·runoff, vs legacy Σ1 = landCount).
+            hydraulicKScale = recalibratedHydraulicK(1, meshMetrics.approximateCellAreaKm2, runoff, m);
         }
-        if (profile.erosion.canyonCarveRadiusKm != null) {
-            carveRadiusHops = kmToApproxHops(profile.erosion.canyonCarveRadiusKm, meshMetrics);
+        maxIncisionNorm = kmCapToNorm(er.maxIncisionKmPerIteration, refKm, profile.elevation);
+        if (er.canyonCarveRadiusKm != null) carveRadiusHops = kmToApproxHops(er.canyonCarveRadiusKm, meshMetrics);
+        if (profile.terrain) {
+            maxRidgeAddedNorm = kmCapToNorm(profile.terrain.maxRidgeGainKm, refKm, profile.elevation);
+            if (profile.terrain.ridgeSharpenScale != null) ridgeSharpenScale = profile.terrain.ridgeSharpenScale;
         }
-    }
-    if (physicalErosion && profile && profile.terrain) {
-        if (profile.terrain.ridgeSharpenScale != null) ridgeSharpenScale = profile.terrain.ridgeSharpenScale;
-        // TODO(Phase 10): convert profile.terrain.maxRidgeGainKm → normalized (local-slope conversion).
     }
 
     // Terrain warp — first step, before ocean detection or smoothing
@@ -163,7 +164,7 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
     if (effGlacial > 0 || hydraulicErosion > 0 || thermalErosion > 0) {
         const gIters = Math.round(effGlacial * 10);
         const hIters = Math.round(hydraulicErosion * 20);
-        const hK = hydraulicErosion * 0.0006;
+        const hK = hydraulicErosion * 0.0006 * hydraulicKScale;   // Phase 10: ×1 legacy, recalibrated in physical mode
         const tIters = Math.round(thermalErosion * 10);
         const talusSlope = 1.2 - thermalErosion * 0.4;
         const kThermal = thermalErosion * 0.15;
@@ -172,7 +173,7 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
             hIters, hK, 0.5, 1.0,
             tIters, talusSlope, kThermal,
             gIters, effGlacial,
-            neighborDist, Infinity, maxIncisionNorm, carveRadiusHops, glaciationPotential);
+            neighborDist, Infinity, maxIncisionNorm, carveRadiusHops, glaciationPotential, flowInit);
         timing.push({ stage: `Erosion composite (h=${hIters}, t=${tIters}, g=${gIters})`, ms: performance.now() - t0 });
     }
 

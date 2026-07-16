@@ -10,6 +10,7 @@
 // verification are the Phase-10 experiment matrix. This is the safe, reusable foundation for it.
 
 import { chordToAngularRad, angularToKm } from './world-scale.js';
+import { heightKmToElevNorm } from './elevation-scale.js';
 
 /**
  * §8.2 — neighbor/downstream distance in KILOMETERS from the unit-sphere CHORD distance the mesh stores
@@ -82,4 +83,28 @@ export function clampAddedHeight(proposedNew, baseHeight, maxAdded = Infinity) {
  */
 export function minResolvableWavelengthKm(averageEdgeKm, minCells) {
   return averageEdgeKm * minCells;
+}
+
+/**
+ * Phase 10 (design §8.3-8.4) — recalibrate the stream-power coefficient when switching from legacy unit
+ * flow (`flow=1`) to physical flow (`flow = cellAreaKm2·runoff`). Because flow scales by `cellArea·runoff`
+ * everywhere, `factor = K·flow^m` is held at the reference resolution by dividing K by `(cellArea·runoff)^m`.
+ * This keeps erosion MAGNITUDE anchored to the legacy look at the reference mesh while the flow field —
+ * and thus flow TOTALS — become resolution-independent (Σ cellArea·runoff = landArea·runoff, vs Σ1 = landCount).
+ */
+export function recalibratedHydraulicK(baseK, cellAreaKm2, runoff, m) {
+  const scale = cellAreaKm2 * runoff;
+  return scale > 0 ? baseK / Math.pow(scale, m) : baseK;
+}
+
+/**
+ * Phase 10 — convert a physical per-iteration height cap (km) to a NORMALIZED-elevation delta, using the
+ * local slope of the (nonlinear) land curve at an operating reference height. `elev` is a profile's
+ * elevation block. Returns Infinity when `capKm` is null/NaN → caller treats as no cap.
+ */
+export function kmCapToNorm(capKm, referenceKm, elev) {
+  if (capKm == null || isNaN(capKm)) return Infinity;
+  const n0 = heightKmToElevNorm(referenceKm, elev);
+  const n1 = heightKmToElevNorm(referenceKm + capKm, elev);
+  return Math.abs(n1 - n0);
 }
