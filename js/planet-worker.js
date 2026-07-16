@@ -18,7 +18,7 @@ import { computeTerrainMetrics } from './terrain-metrics.js';
 import { applyPlatePhysics, expandPlatePhysicsDebug } from './plate-physics.js';
 import { SUPER_PLATE_PHYSICS_MULT, DETAIL_NOISE_DAMPEN_STRENGTH } from './terrain-config.js';
 import { getWorldProfile } from './world-profiles.js';
-import { computeMeshPhysicalMetrics } from './world-scale.js';
+import { computeMeshPhysicalMetrics, kmToApproxHops } from './world-scale.js';
 import { featureWidthWarnings } from './terrain-widths.js';
 import Delaunator from 'https://cdn.jsdelivr.net/npm/delaunator@5.0.1/+esm';
 
@@ -83,11 +83,18 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
     // are threaded now so Phase 10 can derive the caps without re-plumbing.
     const physicalErosion = false; // TODO(Phase 10): enable per profile.erosion + climate/runoff wiring
     let maxIncisionNorm = Infinity;
-    if (physicalErosion && profile && profile.erosion && meshMetrics
-        && profile.erosion.maxIncisionKmPerIteration != null) {
-        // TODO(Phase 10): convert the km cap → normalized-elevation via elevation-scale.js (the land
-        // curve is nonlinear near sea level, so this is a local-slope conversion, not a global factor).
-        maxIncisionNorm = Infinity;
+    // Phase 7 (design §8.6): physical canyon carve radius (hops) from profile.erosion.canyonCarveRadiusKm,
+    // decoupled from drainage-path length. null → legacy path-length derivation (byte-identical).
+    let carveRadiusHops = null;
+    if (physicalErosion && profile && profile.erosion && meshMetrics) {
+        if (profile.erosion.maxIncisionKmPerIteration != null) {
+            // TODO(Phase 10): convert the km cap → normalized-elevation via elevation-scale.js (the land
+            // curve is nonlinear near sea level, so this is a local-slope conversion, not a global factor).
+            maxIncisionNorm = Infinity;
+        }
+        if (profile.erosion.canyonCarveRadiusKm != null) {
+            carveRadiusHops = kmToApproxHops(profile.erosion.canyonCarveRadiusKm, meshMetrics);
+        }
     }
 
     // Terrain warp — first step, before ocean detection or smoothing
@@ -150,7 +157,7 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
             hIters, hK, 0.5, 1.0,
             tIters, talusSlope, kThermal,
             gIters, glacialErosion,
-            neighborDist, Infinity, maxIncisionNorm);
+            neighborDist, Infinity, maxIncisionNorm, carveRadiusHops);
         timing.push({ stage: `Erosion composite (h=${hIters}, t=${tIters}, g=${gIters})`, ms: performance.now() - t0 });
     }
 

@@ -1,7 +1,7 @@
 // Unit tests for js/erosion-scale.js (Phase 6 — hydraulic/thermal physical primitives).
 // Run: node --experimental-modules tests/erosion-scale.test.mjs
 
-import { chordDistToKm, physicalFlowInit, physicalSlopeKm, clampIncisionKm, resolveUniformRunoff } from '../js/erosion-scale.js';
+import { chordDistToKm, physicalFlowInit, physicalSlopeKm, clampIncisionKm, resolveUniformRunoff, canyonCarveRadiusHops } from '../js/erosion-scale.js';
 import { angularToKm, chordToAngularRad } from '../js/world-scale.js';
 import { getWorldProfile } from '../js/world-profiles.js';
 
@@ -49,6 +49,22 @@ ok('missing profile → null', resolveUniformRunoff(undefined) === null);
   const c = getWorldProfile('compact-40km');
   const ru = resolveUniformRunoff(c);
   ok('compact uniformRunoff resolves to a number or null', ru === null || typeof ru === 'number');
+}
+
+// canyonCarveRadiusHops (Phase 7 §8.6) — decouple canyon width from drainage path length
+{
+  const FRAC = 0.15; // representative FLOOD_CARVE_RADIUS_FRAC
+  // null physical radius → byte-identical to legacy Math.max(3, ceil(pathLength·FRAC))
+  for (const len of [0, 5, 20, 100, 333]) {
+    const legacy = Math.max(3, Math.ceil(len * FRAC));
+    ok(`legacy carve radius pathLen=${len}`, canyonCarveRadiusHops(null, len, FRAC) === legacy);
+  }
+  // physical radius overrides path length entirely (the decoupling)
+  ok('physical radius overrides long path', canyonCarveRadiusHops(8, 100000, FRAC) === 8);
+  ok('physical radius overrides short path', canyonCarveRadiusHops(8, 1, FRAC) === 8);
+  ok('physical radius rounds', canyonCarveRadiusHops(8.6, 50, FRAC) === 9);
+  ok('physical radius respects min floor', canyonCarveRadiusHops(1, 50, FRAC) === 3);
+  ok('zero/negative physical radius → legacy', canyonCarveRadiusHops(0, 40, FRAC) === Math.max(3, Math.ceil(40 * FRAC)));
 }
 
 console.log(`erosion-scale tests: ${passed} passed, ${failed} failed`);

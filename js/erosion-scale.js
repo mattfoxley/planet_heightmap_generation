@@ -55,3 +55,14 @@ export function resolveUniformRunoff(profile) {
   const er = profile && profile.erosion;
   return (er && er.uniformRunoff != null && !isNaN(er.uniformRunoff)) ? er.uniformRunoff : null;
 }
+
+/**
+ * §8.6 — canyon carve half-width in hops. Decouples canyon WIDTH from drainage-path LENGTH: when a
+ * physical radius (hops, from `canyonCarveRadiusKm`) is supplied, use it; otherwise fall back to the
+ * legacy `ceil(pathLength · legacyFrac)`. With `physicalRadiusHops == null` this is byte-identical to the
+ * pre-existing `Math.max(minHops, Math.ceil(pathLength · FLOOD_CARVE_RADIUS_FRAC))`.
+ */
+export function canyonCarveRadiusHops(physicalRadiusHops, pathLength, legacyFrac, minHops = 3) {
+  if (physicalRadiusHops != null && physicalRadiusHops > 0) return Math.max(minHops, Math.round(physicalRadiusHops));
+  return Math.max(minHops, Math.ceil(pathLength * legacyFrac));
+}

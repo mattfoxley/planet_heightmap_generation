@@ -155,15 +155,19 @@
 > reapply/edit), gated incision clamp (dormant), compact erosion fields declared. Legacy byte-identical
 > (verified in-browser). Behavioral rework deferred to Phase 10 per the design.
 
-## Phase 7 — Priority Flood
+## Phase 7 — Priority Flood  (canyon-width decoupling done; geodesic kernel + full-pipeline regression → Phase 10)
 
-- [ ] Separate drainage correction from canyon-width selection.
-- [ ] Add `canyonCarveRadiusKm`.
-- [ ] Implement approximate-hop carve radius.
-- [ ] Optionally replace with geodesic-distance kernel.
-- [ ] Remove or deprecate path-length-derived canyon radius in physical mode.
-- [ ] Add regression tests for closed basin drainage.
-- [ ] Compare canyon width across detail levels.
+- [x] Separate drainage correction from canyon-width selection. _(priorityFloodCarve: the carve **radius** (canyon width) is now an explicit parameter, no longer read from the drainage **path length**. Pit-fill/drainage logic unchanged.)_
+- [x] Add `canyonCarveRadiusKm`. _(compact profile already declares `erosion.canyonCarveRadiusKm = 0.20`.)_
+- [x] Implement approximate-hop carve radius. _(design §8.6 transitional: `kmToApproxHops(canyonCarveRadiusKm, meshMetrics)` → threaded runPostProcessing→erodeComposite→priorityFloodCarve as `carveRadiusHops`. Selection primitive `canyonCarveRadiusHops()` in erosion-scale.js.)_
+- [ ] Optionally replace with geodesic-distance kernel. _(OPTIONAL refinement — deferred; the path-index kernel is the design's accepted transitional impl.)_
+- [x] Remove or deprecate path-length-derived canyon radius in physical mode. _(when `carveRadiusHops` is supplied it fully overrides the path-length fraction; legacy keeps path-length as the documented fallback.)_
+- [~] Add regression tests for closed basin drainage. _(primitive-level regression added: tests/erosion-scale.test.mjs `canyonCarveRadiusHops` (legacy-identity across path lengths + physical override). Full closed-basin pipeline regression needs the worker → Phase 10 / §16.)_
+- [ ] Compare canyon width across detail levels. _(→ Phase 10 experiment matrix.)_
+
+> Phase 7 core complete: canyon width decoupled from drainage-path length; physical carve radius wired
+> (dormant until Phase 10 enables physical erosion — legacy AND current compact byte-identical, verified
+> in-browser legacy s42_d400 = 74/8128/455/19.2889). erosion-scale.js tests 29/29.
 
 ## Phase 8 — Glacial Decoupling
 

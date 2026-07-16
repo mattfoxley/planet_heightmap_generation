@@ -23,6 +23,7 @@ import {
     DETAIL_NOISE_WARP_FREQ, DETAIL_NOISE_WARP_AMP, DETAIL_NOISE_WARP_OCTAVES,
     DETAIL_NOISE_DAMPEN_STRENGTH,
 } from './terrain-config.js';
+import { canyonCarveRadiusHops } from './erosion-scale.js';
 
 /**
  * Inline binary min-heap keyed on an external Float32Array of priorities.
@@ -75,10 +76,12 @@ class MinHeap {
  * Pass 2: Redistribute fill deficit as carving along spill paths
  * Pass 3: Enforce monotonic drainage with epsilon gradient
  */
-function priorityFloodCarve(mesh, r_elevation, r_isOcean, carveStrength) {
+function priorityFloodCarve(mesh, r_elevation, r_isOcean, carveStrength, carveRadiusHops = null) {
     const N = mesh.numRegions;
     const { adjOffset, adjList } = mesh;
     const EPS = 1e-7;
+    // Phase 7 (design §8.6): canyon CARVE WIDTH is decoupled from drainage-path LENGTH — see
+    // canyonCarveRadiusHops(). `carveRadiusHops == null` → legacy path-length behavior byte-identical.
 
     // --- Identify the main ocean body via BFS ---
     // Find connected ocean components and mark only the largest as "open ocean"
@@ -191,7 +194,8 @@ function priorityFloodCarve(mesh, r_elevation, r_isOcean, carveStrength) {
 
         // Carve: lower cells near the peak using a triangle kernel
         const carveAmount = deficit * carveStrength;
-        const radius = Math.max(3, Math.ceil(path.length * FLOOD_CARVE_RADIUS_FRAC));
+        // §8.6: physical carve radius (canyon width) when supplied, else legacy path-length-derived.
+        const radius = canyonCarveRadiusHops(carveRadiusHops, path.length, FLOOD_CARVE_RADIUS_FRAC);
         const startIdx = Math.max(0, peakIdx - radius);
         const endIdx = Math.min(path.length - 1, peakIdx + radius);
 
@@ -400,7 +404,7 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
     hIters, K, m, dt,
     tIters, talusSlope, kThermal,
     gIters, glacialStrength,
-    neighborDist, maxThermalTransfer = Infinity, maxIncisionNorm = Infinity)
+    neighborDist, maxThermalTransfer = Infinity, maxIncisionNorm = Infinity, carveRadiusHops = null)
 {
     gIters = gIters || 0;
     glacialStrength = glacialStrength || 0;
@@ -428,7 +432,7 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
     // Priority-flood pit resolution: ensure every land cell drains to ocean
     // before hydraulic erosion begins. Carves canyons through spill points.
     if (hIters > 0) {
-        priorityFloodCarve(mesh, r_elevation, r_isOcean, GLACIAL_INITIAL_CARVE);
+        priorityFloodCarve(mesh, r_elevation, r_isOcean, GLACIAL_INITIAL_CARVE, carveRadiusHops);
     }
 
     // ---- Glacial precomputation (once — index is position-based) ----
@@ -491,7 +495,7 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
 
         if (!midFloodDone && iter >= midFloodIter) {
             midFloodDone = true;
-            priorityFloodCarve(mesh, r_elevation, r_isOcean, GLACIAL_MID_FLOOD_CARVE);
+            priorityFloodCarve(mesh, r_elevation, r_isOcean, GLACIAL_MID_FLOOD_CARVE, carveRadiusHops);
         }
 
         // Sort land cells by descending elevation — needed by glacial ice flow
