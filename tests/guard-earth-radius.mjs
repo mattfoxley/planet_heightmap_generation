@@ -19,7 +19,7 @@ const ALLOWLIST = new Set([
   'world-profiles.js',   // earthlike/legacy radiusKm — legitimate
   // --- legacy, pending migration (see inventory §2) ---
   // 'elevation.js' — MIGRATED (Phase 3): all 6371 removed → no longer allowlisted (ratchet tightened).
-  'terrain-metrics.js',  // TERRAIN — Phase 3 (metrics km via profile radius); next
+  // 'terrain-metrics.js' — MIGRATED (Phase 3): metrics km now via ctx.radiusKm → no longer allowlisted.
   'heuristic-precip.js', // climate — deferred
   'ocean.js',            // climate — deferred
   'precipitation.js',    // climate — deferred

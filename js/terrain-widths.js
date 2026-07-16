@@ -13,7 +13,38 @@
 // where widthKm = baseWidthKm(BASE, profile.radiusKm) for the legacy/earthlike profile (reproduces the
 // legacy width to floating-point tolerance), or an explicit profile km value for physical worlds.
 
+import { cellsAcrossFeature } from './world-scale.js';
+
 export const REF_REGIONS = 10000;
+
+/**
+ * Cells-per-feature validation (design §12): warn when a profile's configured physical feature width
+ * resolves to fewer than the minimum cells at the current mesh resolution — i.e. the feature is too
+ * small to render coherently. Returns an array of human-readable warning strings (empty if all OK, or
+ * if the profile declares no feature widths / minimums — e.g. the legacy profile).
+ */
+export function featureWidthWarnings(profile, meshMetrics) {
+  const mins = (profile.validation && profile.validation.minCellsAcross) || {};
+  const t = profile.tectonics || {}, tr = profile.terrain || {}, er = profile.erosion || {};
+  const checks = [
+    ['mountainInfluence', t.mountainInfluenceKm, mins.mountainInfluence],
+    ['mountainBelt', t.mountainBeltHalfWidthKm != null ? t.mountainBeltHalfWidthKm * 2 : undefined, mins.mountainBelt],
+    ['ridgeSpacing', tr.ridgeSpacingKm, mins.ridgeSpacing],
+    ['riverValley', er.minimumRiverWidthKm, mins.riverValley],
+    ['smoothingRadius', er.smoothingRadiusKm, mins.smoothingRadius],
+    ['noiseWavelength', tr.detailMinWavelengthKm, mins.noiseWavelength],
+  ];
+  const warnings = [];
+  for (const [name, widthKm, minCells] of checks) {
+    if (widthKm == null || minCells == null) continue;
+    const cells = cellsAcrossFeature(widthKm, meshMetrics);
+    if (cells < minCells) {
+      warnings.push(`${name}: ${widthKm} km ≈ ${cells.toFixed(1)} cells across (min ${minCells}) `
+                  + `— under-resolved at ${meshMetrics.numRegions} regions`);
+    }
+  }
+  return warnings;
+}
 
 /** Physical km represented by a legacy `*_BASE` width unit at the given radius. */
 export function baseWidthKm(base, radiusKm) {

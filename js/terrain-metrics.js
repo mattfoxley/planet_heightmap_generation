@@ -5,6 +5,12 @@
 // Each metric function receives a context object with mesh, arrays, and
 // debug layers, and returns a plain object of named scores.
 
+import { getWorldProfile } from './world-profiles.js';
+
+// Physical radius used for hop→km metrics. Set per-generation from ctx.radiusKm at the top of
+// computeTerrainMetrics; defaults to the legacy (Earth) profile so behavior is unchanged.
+let _metricsRadiusKm = getWorldProfile('legacy').radiusKm;
+
 // ────────────────────────────────────────────────────────────────────
 //  Helpers
 // ────────────────────────────────────────────────────────────────────
@@ -14,9 +20,9 @@ function avgEdgeRad(numRegions) {
     return Math.PI / Math.sqrt(numRegions);
 }
 
-/** Convert a BFS hop‐distance to approximate km (Earth radius). */
+/** Convert a BFS hop‐distance to approximate km (world radius from the active profile). */
 function hopsToKm(hops, numRegions) {
-    return hops * avgEdgeRad(numRegions) * 6371;
+    return hops * avgEdgeRad(numRegions) * _metricsRadiusKm;
 }
 
 /** Percentile of a Float32Array (0–1).  Mutates a copy. */
@@ -799,6 +805,7 @@ function backArcFoldPresence(ctx) {
  * @returns {Object} flat scorecard of named metrics
  */
 export function computeTerrainMetrics(ctx) {
+    if (ctx.radiusKm) _metricsRadiusKm = ctx.radiusKm;   // Phase 3: metrics km via profile radius
     // Normalize plateIsOcean to an iterable of seed region IDs
     if (ctx.plateIsOcean instanceof Set) {
         ctx.plateIsOcean = Array.from(ctx.plateIsOcean);

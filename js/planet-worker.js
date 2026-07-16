@@ -19,6 +19,7 @@ import { applyPlatePhysics, expandPlatePhysicsDebug } from './plate-physics.js';
 import { SUPER_PLATE_PHYSICS_MULT, DETAIL_NOISE_DAMPEN_STRENGTH } from './terrain-config.js';
 import { getWorldProfile } from './world-profiles.js';
 import { computeMeshPhysicalMetrics } from './world-scale.js';
+import { featureWidthWarnings } from './terrain-widths.js';
 import Delaunator from 'https://cdn.jsdelivr.net/npm/delaunator@5.0.1/+esm';
 
 setDelaunator(Delaunator);
@@ -215,6 +216,10 @@ function handleGenerate(data) {
         const { mesh, r_xyz } = buildSphere(N, jitter, rng);
         timing.push({ stage: 'Sphere mesh (Fibonacci + Delaunay + pole)', ms: performance.now() - t0 });
         const meshMetrics = computeMeshPhysicalMetrics(mesh.numRegions, profile.radiusKm);
+        // Phase 3: cells-per-feature validation (design §12) — warns when configured feature widths
+        // are under-resolved at this detail. Empty for the legacy profile (no declared feature km).
+        const featureWarnings = featureWidthWarnings(profile, meshMetrics);
+        for (const w of featureWarnings) console.warn('[terrain-validation] ' + w);
 
         t0 = performance.now();
         const neighborDist = computeNeighborDist(mesh, r_xyz);
@@ -430,6 +435,7 @@ function handleGenerate(data) {
                 r_stress: W.r_stress,
                 debugLayers,
                 prePostElev: W.prePostElev,
+                radiusKm: meshMetrics.radiusKm,   // Phase 3: metrics km via profile radius (not an Earth literal)
             });
         } catch (e) {
             terrainMetrics = { _error: e.message };
@@ -467,6 +473,7 @@ function handleGenerate(data) {
             _params: { N, P, jitter, nMag, numContinents, smoothing, terrainWarp, hydraulicErosion, thermalErosion, ridgeSharpening, glacialErosion, continentSizeVariety, temperatureOffset, precipitationOffset, landCoverage, seed },
             worldProfile: profile.id,   // Phase-1 world-scale threading (diagnostic; legacy default)
             meshMetrics,
+            featureWarnings,            // Phase 3: cells-per-feature validation (design §12)
             terrainMetrics
         };
 

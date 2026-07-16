@@ -81,8 +81,9 @@
 > `scaleFactor` uses in elevation.js are stress-math (decay/passes, keep) + a few now-unused destructures.
 - [x] Convert coastal roughening + island distance + uniform-noise mtn ramp. _(applyCoastalDetail: coastRoughenDist, islandMaxDist; applyUniformLandNoise: mtnRampDist via `sf.meshMetrics`; local scaleFactor removed there.)_
 - [ ] Convert continuous rift floor/shoulder multipliers (buildSkeleton ~1017-1019/1152/1154) via `widthKmToHopsFloat`.
-- [ ] Add cells-per-feature warnings.
-- [ ] Compare feature widths at 200k, 500k, and 1M regions.
+- [x] Add cells-per-feature warnings. _(terrain-widths.js `featureWidthWarnings(profile, meshMetrics)` via `cellsAcrossFeature`; worker logs them + includes in done payload. Empty for legacy; fires for compact under-resolved features. tests/terrain-widths.test.mjs 84/84.)_
+- [x] Migrate `terrain-metrics.js` `6371` → `ctx.radiusKm` (metrics km via profile radius; legacy unchanged — shelf/gradient km verified identical). Guard allowlist 7→6.
+- [ ] Compare feature widths at 200k, 500k, and 1M regions. _(deferred to Phase 10 tuning — heavy; belongs with the experiment matrix)_
 
 > Parity VERIFIED for all rounded batches: 7 STABLE baselines (all detail-400 + s100/s200/s400 @ d600)
 > byte-identical to `tuning/baselines/earth/`; and same-run-sequence output is identical with/without the
