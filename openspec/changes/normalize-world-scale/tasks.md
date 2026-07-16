@@ -49,13 +49,14 @@
 - [x] Parameterize land maximum and ocean depth. _(profile.elevation.maxLandHeightKm / oceanScaleKmPerUnit; legacy=6/10, compact=4/6)_
 - [x] Implement inverse kilometer-to-normalized-elevation conversion. _(heightKmToElevNorm — ocean linear, land bisection on monotonic g(t))_
 - [x] Add round-trip tests across representative elevations. _(tests/elevation-scale.test.mjs — 43/43 pass; sea-level, peak, ocean sign/depth, compact endpoints)_
-- [ ] Add linear physical-height export mode. _(planet-mesh.js — next)_
-- [ ] Preserve legacy export mode. _(legacy export currently unchanged; formalize alongside the new mode)_
-- [ ] Add physical elevation debug layer. _(worker debugLayers + UI — next)_
+- [x] Add linear physical-height export mode. _(js/export-metadata.js `heightmapMetadata` (design §14): worldRadiusKm/sphereMode/seaLevelRadiusKm/min-max km/encoding/inward-displacement. The 16-bit export was already linear-km; planet-mesh.js now emits a `.json` sidecar next to the PNG. tests/export-metadata.test.mjs 16/16.)_
+- [x] Preserve legacy export mode. _(sidecar gated to NON-legacy profiles → legacy export stays PNG-only, byte-identical; verified app loads clean.)_
+- [~] Add physical elevation debug layer. _(COVERED by the existing `heightmap`/`landheightmap` map layers, which render physical km (grayscale via elevToHeightKm). A dedicated km-annotated instrumentation layer is deferred to the design §16 instrumentation work.)_
 
-> Core conversion (centralize + parameterize + inverse + tests) complete & legacy-parity verified.
-> Remaining: linear-physical-km export mode + metadata JSON (design §14) and the physical-elevation
-> debug layer — both additive, touch the export path / UI.
+> Phase 2 complete: elevation conversion centralized + parameterized + reversible (43 tests), physical
+> export-mode metadata (16 tests), legacy parity verified in-browser. Debug-layer folded into §16
+> instrumentation. Carried to Phase 12: profile-DRIVEN export km range (currently the legacy Earth
+> range) + cube-map validation.
 
 ## Phase 3 — Terrain Feature Width Migration
 

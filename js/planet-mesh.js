@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { renderer, scene, waterMesh, atmosMesh, starsMesh } from './scene.js';
 import { state } from './state.js';
 import { elevationToColor, elevToHeightKm, biomeColor } from './color-map.js';
+import { heightmapMetadata } from './export-metadata.js';
+import { getWorldProfile } from './world-profiles.js';
 import { makeRng } from './rng.js';
 import { KOPPEN_CLASSES } from './koppen.js';
 
@@ -2171,6 +2173,21 @@ export async function exportMap(type, width, onProgress) {
         a.download = filename;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        // Physical export mode (Phase 2): emit a design-§14 metadata sidecar next to the PNG so the
+        // km encoding is self-describing for Unreal import. Gated to non-legacy profiles so the legacy
+        // export stays PNG-only (unchanged). PNG bytes are identical either way.
+        const profileId = (state.curData && state.curData.worldProfile) || 'legacy';
+        if (profileId !== 'legacy') {
+            const meta = heightmapMetadata(type, getWorldProfile(profileId));
+            const mblob = new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' });
+            const murl = URL.createObjectURL(mblob);
+            const ma = document.createElement('a');
+            ma.href = murl;
+            ma.download = filename.replace(/\.png$/, '.json');
+            ma.click();
+            setTimeout(() => URL.revokeObjectURL(murl), 5000);
+        }
     } else {
         await new Promise(resolve => {
             cvs.toBlob(blob => {
