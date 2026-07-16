@@ -169,13 +169,16 @@
 > (dormant until Phase 10 enables physical erosion — legacy AND current compact byte-identical, verified
 > in-browser legacy s42_d400 = 74/8128/455/19.2889). erosion-scale.js tests 29/29.
 
-## Phase 8 — Glacial Decoupling
+## Phase 8 — Glacial Decoupling  ✅
 
-- [ ] Separate glaciation potential from ice-flow carving.
-- [ ] Add optional external `glaciationPotential` field.
-- [ ] Disable glacial erosion by default in compact profile.
-- [ ] Preserve Earth latitude placement in Earth profile.
-- [ ] Document future habitat-climate integration.
+- [x] Separate glaciation potential from ice-flow carving. _(erodeComposite: glacier PLACEMENT (`glacIdx`) is now sourced independently — external field OR the legacy latitude model — while the ice-flow accumulation/carving/moraine/fjord logic below is unchanged.)_
+- [x] Add optional external `glaciationPotential` field. _(erodeComposite gains `glaciationPotential = null`; when non-null it drives placement directly. No source wired yet (awaits habitat-climate) → passes null → legacy latitude model.)_
+- [x] Disable glacial erosion by default in compact profile. _(compact declares `glacial: { enabled: false }`; runPostProcessing computes `effGlacial = glacialAllowed ? glacialErosion : 0` → gIters 0 → glacial step skipped. Earth latitude placement is invalid on an interior sphere.)_
+- [x] Preserve Earth latitude placement in Earth profile. _(legacy/earthlike declare no `glacial` block → enabled + `glaciationPotential=null` → the original latitude+elevation `glacIdx` runs. Verified in-browser: legacy s42_d400 = 74/8128/455/coast 19.2889 byte-identical — glacial runs at strength 0.5 in that baseline.)_
+- [x] Document future habitat-climate integration. _(design §10 already lists sources; code comments in erodeComposite + world-profiles.js compact `glacial` block point to the `glaciationPotential` hook.)_
+
+> Phase 8 complete: placement/carving decoupled, external-potential hook added (dormant), compact glacial
+> disabled, Earth latitude preserved (byte-identical). No new primitive (refactor + profile flag).
 
 ## Phase 9 — Ridge Sharpening and Detail
 

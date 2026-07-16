@@ -404,7 +404,8 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
     hIters, K, m, dt,
     tIters, talusSlope, kThermal,
     gIters, glacialStrength,
-    neighborDist, maxThermalTransfer = Infinity, maxIncisionNorm = Infinity, carveRadiusHops = null)
+    neighborDist, maxThermalTransfer = Infinity, maxIncisionNorm = Infinity, carveRadiusHops = null,
+    glaciationPotential = null)
 {
     gIters = gIters || 0;
     glacialStrength = glacialStrength || 0;
@@ -442,23 +443,32 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
     let numIceUpstream = null;
 
     if (gIters > 0 && glacialStrength > 0) {
-        function smoothstep(x, edge0, edge1) {
-            const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
-            return t * t * (3 - 2 * t);
-        }
+        // Phase 8 (design §10): glacier PLACEMENT is decoupled from ice-flow CARVING. When an external
+        // `glaciationPotential` field is supplied (habitat climate / imported temperature / altitude /
+        // author mask), it drives placement directly. Otherwise the legacy Earth latitude+elevation model
+        // runs — valid for the Earth profile, invalid for an interior sphere (which disables glacial
+        // instead; see runPostProcessing). null → legacy behavior byte-identical.
+        if (glaciationPotential) {
+            glacIdx = glaciationPotential;
+        } else {
+            const smoothstep = (x, edge0, edge1) => {
+                const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+                return t * t * (3 - 2 * t);
+            };
 
-        glacIdx = new Float32Array(N);
-        // At strength=1 glaciation starts at ~50° latitude; at 0.5 it starts at ~70°
-        const thresholdLat = Math.PI / 2 - glacialStrength * Math.PI / GLACIAL_LAT_DIVISOR;
+            glacIdx = new Float32Array(N);
+            // At strength=1 glaciation starts at ~50° latitude; at 0.5 it starts at ~70°
+            const thresholdLat = Math.PI / 2 - glacialStrength * Math.PI / GLACIAL_LAT_DIVISOR;
 
-        for (let r = 0; r < N; r++) {
-            if (r_isOcean[r]) continue;
-            const y = r_xyz[3 * r + 1];
-            const polarDist = Math.abs(Math.asin(Math.max(-1, Math.min(1, y))));
-            const latFactor = smoothstep(polarDist, thresholdLat, Math.PI / 2);
-            const elevFactor = smoothstep(r_elevation[r], GLACIAL_ELEV_LOW, GLACIAL_ELEV_HIGH);
-            const latScale = smoothstep(polarDist, Math.PI / 8, Math.PI / 3);
-            glacIdx[r] = Math.max(latFactor, elevFactor * GLACIAL_ELEV_FACTOR_SCALE * (GLACIAL_ELEV_FACTOR_LAT_BASE + GLACIAL_ELEV_FACTOR_LAT_SCALE * latScale)) * glacialStrength;
+            for (let r = 0; r < N; r++) {
+                if (r_isOcean[r]) continue;
+                const y = r_xyz[3 * r + 1];
+                const polarDist = Math.abs(Math.asin(Math.max(-1, Math.min(1, y))));
+                const latFactor = smoothstep(polarDist, thresholdLat, Math.PI / 2);
+                const elevFactor = smoothstep(r_elevation[r], GLACIAL_ELEV_LOW, GLACIAL_ELEV_HIGH);
+                const latScale = smoothstep(polarDist, Math.PI / 8, Math.PI / 3);
+                glacIdx[r] = Math.max(latFactor, elevFactor * GLACIAL_ELEV_FACTOR_SCALE * (GLACIAL_ELEV_FACTOR_LAT_BASE + GLACIAL_ELEV_FACTOR_LAT_SCALE * latScale)) * glacialStrength;
+            }
         }
 
         iceTarget = new Int32Array(N);

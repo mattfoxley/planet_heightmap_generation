@@ -72,6 +72,11 @@ export const COMPACT_40KM_PROFILE = {
     // incision safety caps. EXPERIMENTAL — activated only when the physical erosion mode runs (Phase 10).
     uniformRunoff: 0.35, maxIncisionKmPerIteration: 0.05, maxReliefFractionPerIteration: 0.35,
   },
+  // Phase 8 (design §10): Earth latitude-driven glacier placement is invalid on an interior sphere, so
+  // glacial erosion is OFF by default. A future habitat-climate system can supply a `glaciationPotential`
+  // field (imported temperature / altitude / author mask) to re-enable ice-flow carving decoupled from
+  // latitude. See runPostProcessing + erodeComposite(glaciationPotential).
+  glacial: { enabled: false },
   validation: {
     minCellsAcross: { mountainInfluence: 40, mountainBelt: 20, ridgeSpacing: 6, riverValley: 3, smoothingRadius: 2, noiseWavelength: 3 },
   },

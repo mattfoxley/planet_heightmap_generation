@@ -145,8 +145,15 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
         timing.push({ stage: 'Detail noise L2 (±50m biased)', ms: performance.now() - t0 });
     }
 
-    if (glacialErosion > 0 || hydraulicErosion > 0 || thermalErosion > 0) {
-        const gIters = Math.round(glacialErosion * 10);
+    // Phase 8 (design §10): a profile may disable glacial erosion (compact — Earth latitude placement is
+    // invalid on an interior sphere). Legacy/earthlike declare no `glacial` block → enabled → unchanged.
+    const glacialAllowed = !(profile && profile.glacial && profile.glacial.enabled === false);
+    const effGlacial = glacialAllowed ? glacialErosion : 0;
+    // Optional external placement field (habitat climate) — none wired yet; null → legacy latitude model.
+    const glaciationPotential = null;
+
+    if (effGlacial > 0 || hydraulicErosion > 0 || thermalErosion > 0) {
+        const gIters = Math.round(effGlacial * 10);
         const hIters = Math.round(hydraulicErosion * 20);
         const hK = hydraulicErosion * 0.0006;
         const tIters = Math.round(thermalErosion * 10);
@@ -156,8 +163,8 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
         erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
             hIters, hK, 0.5, 1.0,
             tIters, talusSlope, kThermal,
-            gIters, glacialErosion,
-            neighborDist, Infinity, maxIncisionNorm, carveRadiusHops);
+            gIters, effGlacial,
+            neighborDist, Infinity, maxIncisionNorm, carveRadiusHops, glaciationPotential);
         timing.push({ stage: `Erosion composite (h=${hIters}, t=${tIters}, g=${gIters})`, ms: performance.now() - t0 });
     }
 
