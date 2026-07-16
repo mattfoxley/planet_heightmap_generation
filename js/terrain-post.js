@@ -400,7 +400,7 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
     hIters, K, m, dt,
     tIters, talusSlope, kThermal,
     gIters, glacialStrength,
-    neighborDist, maxThermalTransfer = Infinity)
+    neighborDist, maxThermalTransfer = Infinity, maxIncisionNorm = Infinity)
 {
     gIters = gIters || 0;
     glacialStrength = glacialStrength || 0;
@@ -654,6 +654,15 @@ export function erodeComposite(mesh, r_elevation, r_xyz, r_isOcean,
 
                 if (h_new < h_receiver) h_new = h_receiver;
                 if (h_new < 0) h_new = 0;
+
+                // Phase 6 (design §8.4): optional per-iteration incision clamp. `maxIncisionNorm` is in
+                // NORMALIZED-elevation units (the caller converts km→norm). Default Infinity → legacy
+                // no-op; a physical profile caps catastrophic single-step lowering. Mirrors the thermal
+                // `maxThermalTransfer` clamp — dormant until Phase 10 enables physical erosion mode.
+                if (maxIncisionNorm !== Infinity) {
+                    const proposed = r_elevation[r] - h_new;
+                    if (proposed > maxIncisionNorm) h_new = r_elevation[r] - maxIncisionNorm;
+                }
 
                 // Sediment deposition: deposit fraction of eroded material at receiver
                 const eroded = r_elevation[r] - h_new;

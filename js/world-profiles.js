@@ -68,6 +68,9 @@ export const COMPACT_40KM_PROFILE = {
   erosion: {
     talusAngleDeg: 34, smoothingRadiusKm: 0.15, canyonCarveRadiusKm: 0.20,
     hydraulicLengthScaleKm: 1.0, minimumRiverWidthKm: 0.10,
+    // Phase 6 (design §8.3/§8.4): terrain-only runoff (climate disabled on the interior sphere) + physical
+    // incision safety caps. EXPERIMENTAL — activated only when the physical erosion mode runs (Phase 10).
+    uniformRunoff: 0.35, maxIncisionKmPerIteration: 0.05, maxReliefFractionPerIteration: 0.35,
   },
   validation: {
     minCellsAcross: { mountainInfluence: 40, mountainBelt: 20, ridgeSpacing: 6, riverValley: 3, smoothingRadius: 2, noiseWavelength: 3 },

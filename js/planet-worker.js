@@ -73,9 +73,22 @@ function computeOrogenicField(debugLayers) {
 }
 
 // Run terrain post-processing with per-step timing
-function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed, r_hotspot, r_dampen, r_orogenic) {
+function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed, r_hotspot, r_dampen, r_orogenic, profile, meshMetrics) {
     const { smoothing, glacialErosion, hydraulicErosion, thermalErosion, ridgeSharpening, terrainWarp } = params;
     const timing = [];
+
+    // Phase 6 (design §8.4): physical erosion hooks. DORMANT until Phase 10 enables physical erosion
+    // mode + runoff/K recalibration; legacy, earthlike, AND the current compact path all keep
+    // maxIncisionNorm = Infinity, so the erosion arithmetic is byte-identical. `profile`/`meshMetrics`
+    // are threaded now so Phase 10 can derive the caps without re-plumbing.
+    const physicalErosion = false; // TODO(Phase 10): enable per profile.erosion + climate/runoff wiring
+    let maxIncisionNorm = Infinity;
+    if (physicalErosion && profile && profile.erosion && meshMetrics
+        && profile.erosion.maxIncisionKmPerIteration != null) {
+        // TODO(Phase 10): convert the km cap → normalized-elevation via elevation-scale.js (the land
+        // curve is nonlinear near sea level, so this is a local-slope conversion, not a global factor).
+        maxIncisionNorm = Infinity;
+    }
 
     // Terrain warp — first step, before ocean detection or smoothing
     if (terrainWarp > 0) {
@@ -137,7 +150,7 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
             hIters, hK, 0.5, 1.0,
             tIters, talusSlope, kThermal,
             gIters, glacialErosion,
-            neighborDist);
+            neighborDist, Infinity, maxIncisionNorm);
         timing.push({ stage: `Erosion composite (h=${hIters}, t=${tIters}, g=${gIters})`, ms: performance.now() - t0 });
     }
 
@@ -328,7 +341,7 @@ function handleGenerate(data) {
 
         progress(60, 'Eroding terrain\u2026');
         t0 = performance.now();
-        const { dl_erosionDelta, postTiming } = runPostProcessing(mesh, r_xyz, r_elevation, { smoothing, glacialErosion, hydraulicErosion, thermalErosion, ridgeSharpening, terrainWarp }, neighborDist, seed, debugLayers.hotspot, r_dampen, r_orogenic);
+        const { dl_erosionDelta, postTiming } = runPostProcessing(mesh, r_xyz, r_elevation, { smoothing, glacialErosion, hydraulicErosion, thermalErosion, ridgeSharpening, terrainWarp }, neighborDist, seed, debugLayers.hotspot, r_dampen, r_orogenic, profile, meshMetrics);
         timing.push({ stage: 'Terrain post-processing (total)', ms: performance.now() - t0 });
         debugLayers.erosionDelta = dl_erosionDelta;
 
@@ -399,6 +412,7 @@ function handleGenerate(data) {
         W = {
             mesh, r_xyz: new Float32Array(r_xyz), t_xyz: new Float32Array(t_xyz),
             neighborDist,
+            profile, meshMetrics,   // Phase 6: retain profile + physical metrics for reapply/edit erosion hooks
             r_plate: new Int32Array(r_plate), plateSeeds: new Set(plateSeeds), plateVec,
             plateIsOcean: new Set(plateIsOcean), originalPlateIsOcean: new Set(originalPlateIsOcean),
             plateDensity: Object.assign({}, plateDensity),
@@ -508,7 +522,7 @@ function handleReapply(data) {
 
         progress(20, 'Eroding terrain\u2026');
         t0 = performance.now();
-        const { dl_erosionDelta, postTiming } = runPostProcessing(W.mesh, W.r_xyz, r_elevation, data, W.neighborDist, W.seed, undefined, W.r_dampen, W.r_orogenic);
+        const { dl_erosionDelta, postTiming } = runPostProcessing(W.mesh, W.r_xyz, r_elevation, data, W.neighborDist, W.seed, undefined, W.r_dampen, W.r_orogenic, W.profile, W.meshMetrics);
         const tPost = performance.now() - t0;
 
         // Update retained final elevation for deferred climate
@@ -631,7 +645,7 @@ function handleEditRecompute(data) {
 
         progress(50, 'Eroding terrain\u2026');
         t0 = performance.now();
-        const { dl_erosionDelta, postTiming } = runPostProcessing(mesh, r_xyz, r_elevation, data, W.neighborDist, W.seed, debugLayers.hotspot, r_dampen, r_orogenic);
+        const { dl_erosionDelta, postTiming } = runPostProcessing(mesh, r_xyz, r_elevation, data, W.neighborDist, W.seed, debugLayers.hotspot, r_dampen, r_orogenic, W.profile, W.meshMetrics);
         const tPost = performance.now() - t0;
         debugLayers.erosionDelta = dl_erosionDelta;
 
@@ -961,7 +975,7 @@ function handleImportHeightmap(data) {
 
         progress(35, 'Processing terrain\u2026');
         t0 = performance.now();
-        const { dl_erosionDelta, postTiming } = runPostProcessing(mesh, r_xyz, r_elevation, { smoothing, glacialErosion, hydraulicErosion, thermalErosion, ridgeSharpening, terrainWarp }, neighborDist, seed);
+        const { dl_erosionDelta, postTiming } = runPostProcessing(mesh, r_xyz, r_elevation, { smoothing, glacialErosion, hydraulicErosion, thermalErosion, ridgeSharpening, terrainWarp }, neighborDist, seed, undefined, undefined, undefined, profile, meshMetrics);
         timing.push({ stage: 'Terrain post-processing', ms: performance.now() - t0 });
 
         progress(50, 'Deriving plates\u2026');
@@ -1047,6 +1061,7 @@ function handleImportHeightmap(data) {
         W = {
             mesh, r_xyz: new Float32Array(r_xyz), t_xyz: new Float32Array(t_xyz),
             neighborDist,
+            profile, meshMetrics,   // Phase 6: retain profile + physical metrics for reapply/edit erosion hooks
             r_plate: new Int32Array(r_plate), plateSeeds: new Set(plateSeeds), plateVec,
             plateIsOcean: new Set(plateIsOcean), originalPlateIsOcean: new Set(plateIsOcean),
             plateDensity: {}, plateDensityLand: {}, plateDensityOcean: {},

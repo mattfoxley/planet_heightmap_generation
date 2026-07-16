@@ -72,8 +72,8 @@
 - [x] Convert tectonic reach to kilometers. _(computeSpatialFields width block: interiorBand, tectonicReach, plateauStart — via widthKmToHops(baseWidthKm(...)))_
 - [x] Convert mountain ridge sigma/extent to kilometers. _(ridgeSigmaBase, ridgePeakShift, ridgeExtent)_
   - ✅ **Legacy parity verified in-pipeline:** re-ran seeds 42/100/200/400 × detail 400/600 → all 8 metrics BYTE-IDENTICAL to `tuning/baselines/earth/` (island/land/coast). Exact-parity proof holds in real generation.
-- [ ] Convert phasor wavelength and bandwidth to kilometers. _(already `*_KM`; just re-point at profile.radiusKm + drop elevation.js:1403 `6371`)_
-- [ ] Convert direction smoothing to kilometers. _(PHASOR_DIRECTION_SMOOTHING_KM already km)_
+- [x] Convert phasor wavelength and bandwidth to kilometers. _(elevation.js:1397-1398 `PHASOR_WAVELENGTH_KM / meshMetrics.radiusKm`, `PHASOR_BANDWIDTH_KM / meshMetrics.radiusKm`; zero `6371` left in elevation.js — guard no longer allowlists it.)_
+- [x] Convert direction smoothing to kilometers. _(elevation.js:1415 `PHASOR_DIRECTION_SMOOTHING_KM / avgEdgeKm`.)_
 - [x] Convert rift widths to kilometers. _(riftHalfWidth BFS bound + continuous `RIFT_FLOOR/SHOULDER_*_MULT·scaleFactor` floor/shoulder distances (buildSkeleton) via `widthKmToHopsFloat`.)_
 - [x] Convert foreland and back-arc distances. _(baStart/baPeak/baEnd. Foreland uses stress fractions, not hop widths.)_
 - [x] Convert shelf and continental slope widths. _(SHELF_NARROW/WIDE, SLOPE_WIDTH)_
@@ -84,7 +84,7 @@
 > ✅ **All `BASE·scaleFactor` feature-width sites are now migrated to physical km.** Remaining
 > `scaleFactor` uses in elevation.js are stress-math (decay/passes, keep) + a few now-unused destructures.
 - [x] Convert coastal roughening + island distance + uniform-noise mtn ramp. _(applyCoastalDetail: coastRoughenDist, islandMaxDist; applyUniformLandNoise: mtnRampDist via `sf.meshMetrics`; local scaleFactor removed there.)_
-- [ ] Convert continuous rift floor/shoulder multipliers (buildSkeleton ~1017-1019/1152/1154) via `widthKmToHopsFloat`.
+- [x] Convert continuous rift floor/shoulder multipliers (buildSkeleton 1017-1019/1152/1154) via `widthKmToHopsFloat`. _(all use `widthKmToHopsFloat(baseWidthKm(RIFT_*_MULT, radiusKm), meshMetrics)`; verified.)_
 - [x] Add cells-per-feature warnings. _(terrain-widths.js `featureWidthWarnings(profile, meshMetrics)` via `cellsAcrossFeature`; worker logs them + includes in done payload. Empty for legacy; fires for compact under-resolved features. tests/terrain-widths.test.mjs 84/84.)_
 - [x] Migrate `terrain-metrics.js` `6371` → `ctx.radiusKm` (metrics km via profile radius; legacy unchanged — shelf/gradient km verified identical). Guard allowlist 7→6.
 - [ ] Compare feature widths at 200k, 500k, and 1M regions. _(deferred to Phase 10 tuning — heavy; belongs with the experiment matrix)_
@@ -129,18 +129,31 @@
 - [ ] Convert neighbor distances / height diffs to km + material transfer in km space. _(→ Phase 10: the km-space slope+transfer rework, gated on physical profile.)_
 - [ ] Test analytical cones + compare across detail levels. _(→ Phase 10, once the physical path is active.)_
 
-## Phase 6 — Hydraulic Erosion
+## Phase 6 — Hydraulic Erosion  (physical primitives + plumbing + gated clamp done; behavioral rework → Phase 10)
 
-- [ ] Store hydraulic `cellDist` in kilometers.
-- [ ] Add physical runoff mode based on cell area.
-- [ ] Preserve legacy unit-flow mode.
-- [ ] Add uniform runoff fallback.
-- [ ] Audit and rename effective stream-power coefficients.
-- [ ] Add incision clamps.
-- [ ] Convert deposition slope sensitivity to physical slope.
-- [ ] Add drainage-area debug layer in km².
-- [ ] Add incision/deposition debug layers in meters.
-- [ ] Verify watershed topology across detail levels.
+> **Structural note (same pattern as Phase 5):** switching hydraulic flow from legacy unit-flow
+> (`flow=1`) to physical (`cellAreaKm2·runoff`) is a **behavioral** change that also requires recalibrating
+> the effective `K`, and it can't be baseline-verified (it's meant to differ). So the deep physical-runoff
+> rework + K recalibration + watershed verification live in the Phase-10 experiment matrix. Here we land the
+> safe, reusable **physical primitives** (`js/erosion-scale.js`, unit-tested), thread `profile`/`meshMetrics`
+> into the erosion path, add a **gated incision clamp** (default no-op), and declare the compact erosion
+> fields — keeping legacy **byte-identical**.
+
+- [x] Store hydraulic `cellDist` in kilometers — **primitive ready:** `erosion-scale.js chordDistToKm(chord, radiusKm)` (neighborDist is unit-sphere chord → angular → km). tests/erosion-scale.test.mjs.
+- [~] Add physical runoff mode based on cell area — **primitive ready:** `physicalFlowInit(cellAreaKm2, runoff)` (design §8.3). Application (replacing `flow=1`) + K recalibration → Phase 10.
+- [x] Preserve legacy unit-flow mode. _(default path unchanged — `flow[r]=1`; physical mode is opt-in and dormant. Legacy s42_d400 verified byte-identical in-browser: 74/8128/455/coast 19.2889.)_
+- [x] Add uniform runoff fallback. _(`resolveUniformRunoff(profile)` → compact `erosion.uniformRunoff=0.35`; legacy/earthlike → null → keeps unit flow. design §8.3.)_
+- [ ] Audit and rename effective stream-power coefficients. _(→ Phase 10, with the physical-flow K recalibration; `K` stays a calibrated effective coefficient per design §8.4.)_
+- [x] Add incision clamps — **primitive + gated hook:** `clampIncisionKm(deltaKm, maxIncisionKm, localReliefKm, maxReliefFrac)`; `erodeComposite` gained `maxIncisionNorm=Infinity` (mirrors thermal `maxThermalTransfer`), wired into the hydraulic solve. Default Infinity → legacy no-op. Compact declares `maxIncisionKmPerIteration=0.05`, `maxReliefFractionPerIteration=0.35` (activated in Phase 10 when physical erosion mode enables).
+- [~] Convert deposition slope sensitivity to physical slope — **primitive ready:** `physicalSlopeKm(hKmA, hKmB, distKm)` (design §8.5). Application in the deposition step → Phase 10 (needs km-height + km-dist in the hot loop).
+- [ ] Add drainage-area debug layer in km². _(→ Phase 10 / §16 instrumentation.)_
+- [ ] Add incision/deposition debug layers in meters. _(→ Phase 10 / §16 instrumentation.)_
+- [ ] Verify watershed topology across detail levels. _(→ Phase 10, once physical mode is active.)_
+
+> Phase 6 foundation complete: `erosion-scale.js` (5 primitives, tests/erosion-scale.test.mjs 19/19),
+> `profile`/`meshMetrics` threaded through `runPostProcessing`→`erodeComposite` (+ retained on `W` for
+> reapply/edit), gated incision clamp (dormant), compact erosion fields declared. Legacy byte-identical
+> (verified in-browser). Behavioral rework deferred to Phase 10 per the design.
 
 ## Phase 7 — Priority Flood
 
