@@ -913,9 +913,17 @@ export function generate(overrideSeed, toggledIndices = [], onProgress, skipClim
         cmd: 'generate',
         ...s,
         seed: overrideSeed,
+        profileId: getSelectedProfileId(),
         toggledIndices,
         skipClimate
     });
+}
+
+// De-dormant (normalize-world-scale): pick a world profile via `?profile=<id>` (default legacy).
+// The worker resolves it via getWorldProfile and threads it through generation (radius, warp, widths).
+function getSelectedProfileId() {
+    try { return new URLSearchParams(location.search).get('profile') || 'legacy'; }
+    catch (e) { return 'legacy'; }
 }
 
 export function reapplyViaWorker(onDone, skipClimate = false) {

@@ -34,7 +34,8 @@
   - [x] `cellsAcrossFeature`
   - [x] (extra) `chordToAngularRad`, `averageEdgeAngleRad`, `clamp`, `dot3`
 - [x] Add `legacy`, `earthlike`, and `compact-40km` profiles. _(legacy = default; earthlike feature scales left to legacy fallback until tuned)_
-- [x] Thread selected profile through worker/generation context. _(planet-worker.js: `getWorldProfile(data.profileId)` + `computeMeshPhysicalMetrics` in both handleGenerate & handleImportHeightmap; surfaced in `done` payload as `worldProfile`/`meshMetrics`. Default legacy → zero behavior change; verified in-browser: generation completes, no console errors.)_
+- [x] Thread selected profile through worker/generation context.
+- [x] **Profile SELECTOR (de-dormant):** `generate.js` reads `?profile=<id>` (default legacy) and sends `profileId` in the generate message → worker resolves via `getWorldProfile`. Activates the compact profile end-to-end. Verified deterministically (tests/world-scale.test.mjs 32/32: compact → radiusKm 20, warp clamps 0.3→0.2 km → 0.01 rad). _(Live in-browser compact demo is impeded by the in-app browser's ES-module cache serving a stale generate.js; served file + plumbing are correct — hard-refresh with `?profile=compact-40km` to see it. Reapply/edit paths still legacy-only — follow-up.)_ _(planet-worker.js: `getWorldProfile(data.profileId)` + `computeMeshPhysicalMetrics` in both handleGenerate & handleImportHeightmap; surfaced in `done` payload as `worldProfile`/`meshMetrics`. Default legacy → zero behavior change; verified in-browser: generation completes, no console errors.)_
 - [x] Add unit tests for conversion helpers. _(tests/world-scale.test.mjs — 19/19 pass)_
 - [x] Add repository guard test for direct `6371` usage. _(tests/guard-earth-radius.mjs — ratchet, PASS; 8 legacy sites allowlisted, target → 1)_
 

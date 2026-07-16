@@ -58,6 +58,17 @@ ok('talus 45° → slope 1', approx(talusSlopeFromAngle(45), 1, 1e-12));
 ok('talus 26.565° → slope 0.5', approx(talusSlopeFromAngle(26.565), 0.5, 1e-4));
 ok('talus round-trip 34°', approx(slopeRatioToAngleDeg(talusSlopeFromAngle(34)), 34, 1e-9));
 
+// compact profile de-dormant plumbing — the exact physical values the worker computes for
+// profileId='compact-40km' (selected via ?profile=compact-40km).
+{
+  const p = getWorldProfile('compact-40km');
+  const mm = computeMeshPhysicalMetrics(500000, p.radiusKm);
+  ok('compact meshMetrics.radiusKm = 20', mm.radiusKm === 20);
+  const warpKm = clampWarpKm(p.terrain.warpAmplitudeKm, p.terrain.maxWarpKm, p.terrain.ridgeSpacingKm);
+  ok('compact warp clamps 0.3→0.2 km (vs ridgeSpacing 0.8)', approx(warpKm, 0.2, 1e-12));
+  ok('compact warp angular = 0.01 rad (vs legacy 0.006)', approx(warpKmToAngular(warpKm, p.radiusKm), 0.01, 1e-12));
+}
+
 // profiles
 ok('compact-40km radius = 20', getWorldProfile('compact-40km').radiusKm === 20);
 ok('legacy radius = 6371', getWorldProfile('legacy').radiusKm === 6371);
