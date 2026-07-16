@@ -58,8 +58,12 @@
 > instrumentation. Carried to Phase 12: profile-DRIVEN export km range (currently the legacy Earth
 > range) + cube-map validation.
 
-## Phase 3 — Terrain Feature Width Migration
+## Phase 3 — Terrain Feature Width Migration  (foundation done; site conversions in progress)
 
+- [x] **Foundation:** resolve `scaleFactor` (= √(N/10000)) + prove km↔hops parity. `js/terrain-widths.js`
+  (`baseWidthKm`, `widthKmToHops`) reproduces `round(BASE·scaleFactor)` EXACTLY — max hop diff 0 across
+  7 resolutions (tests/terrain-widths.test.mjs, 79/79). Migration pattern locked; each site can move to
+  km with zero legacy-output change.
 - [ ] Convert tectonic reach to kilometers.
 - [ ] Convert mountain ridge sigma/extent to kilometers.
 - [ ] Convert phasor wavelength and bandwidth to kilometers.

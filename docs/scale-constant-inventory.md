@@ -149,7 +149,7 @@ Earth-profile reference for the Phase 11 regression and the "legacy parity" gate
 
 ## 12. Uncertain constants requiring experiment (do not guess)
 
-1. `scaleFactor` exact formula + reference region count (§4) — read `elevation.js`/`generate.js`, verify empirically.
+1. ~~`scaleFactor` exact formula + reference region count (§4)~~ **RESOLVED (Phase 3):** `scaleFactor = √(numRegions/10000)` (elevation.js:477, `COLLISION_DT_REF_REGIONS`=10000). ⇒ each `*_BASE` unit = π·radiusKm/100 km (~200.06 km @ Earth). km-based conversion (`js/terrain-widths.js`) reproduces `round(BASE·scaleFactor)` EXACTLY (max hop diff 0 across 7 resolutions — tests/terrain-widths.test.mjs).
 2. Thermal talus threshold + hydraulic slope units (§6) — read `terrain-post.js`.
 3. `PHASOR_WARP_AMPLITUDE` true km at Earth radius vs the "~38 km" comment (§3/§7).
 4. km↔hops conversion accuracy vs measured feature widths (§4) — Phase 3 validation.
