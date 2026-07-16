@@ -924,11 +924,13 @@ export function generate(overrideSeed, toggledIndices = [], onProgress, skipClim
     });
 }
 
-// De-dormant (normalize-world-scale): pick a world profile via `?profile=<id>` (default legacy).
+// Pick a world profile via `?profile=<id>`. DEFAULT is the compact-40km interior world (this fork's
+// target world); the original Earth-scale behavior is still available via `?profile=legacy`.
 // The worker resolves it via getWorldProfile and threads it through generation (radius, warp, widths).
+const DEFAULT_UI_PROFILE = 'compact-40km';
 function getSelectedProfileId() {
-    try { return new URLSearchParams(location.search).get('profile') || 'legacy'; }
-    catch (e) { return 'legacy'; }
+    try { return new URLSearchParams(location.search).get('profile') || DEFAULT_UI_PROFILE; }
+    catch (e) { return DEFAULT_UI_PROFILE; }
 }
 
 // Phase 10: apply a profile's recommended sculpt preset to the sculpt sliders when it is selected, so a
