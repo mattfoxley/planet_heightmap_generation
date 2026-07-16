@@ -17,7 +17,7 @@ import { makeRandInt, makeRng } from './rng.js';
 import { SimplexNoise } from './simplex-noise.js';
 import { computeMeshPhysicalMetrics } from './world-scale.js';
 import { getWorldProfile } from './world-profiles.js';
-import { baseWidthKm, widthKmToHops } from './terrain-widths.js';
+import { baseWidthKm, widthKmToHops, widthKmToHopsFloat } from './terrain-widths.js';
 import {
     COLLISION_THRESHOLD, COLLISION_DT_BASE, COLLISION_DT_REF_REGIONS,
     PAIR_INTENSITY_BASE, SUBDUCT_UNDULATION_DENSITY_DECAY, SUBDUCT_UNDULATION_FREQ,
@@ -1014,9 +1014,9 @@ function buildSkeleton(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds,
                     // the valley edge — inner/outer offsets stack on top of
                     // floorEnd so shoulder extent is from the valley wall,
                     // not from rift center.
-                    const floorEnd = RIFT_FLOOR_MULT * scaleFactor * floorScale * widthAsym;
-                    const shoulderEnd = floorEnd + RIFT_SHOULDER_INNER_MULT * scaleFactor * shoulderScale * widthAsym;
-                    const localHalfWidth = floorEnd + RIFT_SHOULDER_OUTER_MULT * scaleFactor * shoulderScale * widthAsym;
+                    const floorEnd = widthKmToHopsFloat(baseWidthKm(RIFT_FLOOR_MULT, meshMetrics.radiusKm), meshMetrics) * floorScale * widthAsym;
+                    const shoulderEnd = floorEnd + widthKmToHopsFloat(baseWidthKm(RIFT_SHOULDER_INNER_MULT, meshMetrics.radiusKm), meshMetrics) * shoulderScale * widthAsym;
+                    const localHalfWidth = floorEnd + widthKmToHopsFloat(baseWidthKm(RIFT_SHOULDER_OUTER_MULT, meshMetrics.radiusKm), meshMetrics) * shoulderScale * widthAsym;
 
                     if (rd <= localHalfWidth + 0.5) {
                         const shoulderHeightNoise = RIFT_SHOULDER_HEIGHT_VAR_BASE
@@ -1149,9 +1149,9 @@ function buildSkeleton(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds,
             {
                 const rd = riftDist[r];
                 const inRiftFloor = rd !== Infinity &&
-                    rd <= RIFT_FLOOR_MULT * scaleFactor + 0.5;
+                    rd <= widthKmToHopsFloat(baseWidthKm(RIFT_FLOOR_MULT, meshMetrics.radiusKm), meshMetrics) + 0.5;
                 if (!inRiftFloor) {
-                    const floorRamp = Math.min(1, lcd / (5 * scaleFactor));
+                    const floorRamp = Math.min(1, lcd / widthKmToHopsFloat(baseWidthKm(5, meshMetrics.radiusKm), meshMetrics));
                     const minElev = INTERIOR_FLOOR * floorRamp;
                     if (r_elevation[r] < minElev) r_elevation[r] = minElev;
                 }
@@ -1828,8 +1828,8 @@ function applyIslandArcs(mesh, r_xyz, r_elevation, tect, sf, r_plate, seed, debu
         if (d < 1 || d > maxArcDist) continue;
         const x = r_xyz[3*r], y = r_xyz[3*r+1], z = r_xyz[3*r+2];
 
-        const peakDist = Math.max(ARC_PEAK_DIST_BASE, ARC_PEAK_DIST_BASE * scaleFactor);
-        const sigma = Math.max(ARC_SIGMA_BASE_VAL, ARC_SIGMA_BASE_VAL * scaleFactor);
+        const peakDist = Math.max(ARC_PEAK_DIST_BASE, widthKmToHopsFloat(baseWidthKm(ARC_PEAK_DIST_BASE, meshMetrics.radiusKm), meshMetrics));
+        const sigma = Math.max(ARC_SIGMA_BASE_VAL, widthKmToHopsFloat(baseWidthKm(ARC_SIGMA_BASE_VAL, meshMetrics.radiusKm), meshMetrics));
         const distWeight = Math.exp(-0.5 * ((d - peakDist) / sigma) ** 2);
 
         // Base ridged-fbm gates which cells qualify as part of an island

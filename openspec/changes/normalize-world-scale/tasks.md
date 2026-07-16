@@ -70,12 +70,15 @@
   - ✅ **Legacy parity verified in-pipeline:** re-ran seeds 42/100/200/400 × detail 400/600 → all 8 metrics BYTE-IDENTICAL to `tuning/baselines/earth/` (island/land/coast). Exact-parity proof holds in real generation.
 - [ ] Convert phasor wavelength and bandwidth to kilometers. _(already `*_KM`; just re-point at profile.radiusKm + drop elevation.js:1403 `6371`)_
 - [ ] Convert direction smoothing to kilometers. _(PHASOR_DIRECTION_SMOOTHING_KM already km)_
-- [x] Convert rift widths to kilometers. _(riftHalfWidth BFS bound. NOTE: continuous `RIFT_*_MULT·scaleFactor` float distances at ~1010-1012/1147 still pending — need a no-round float km variant.)_
+- [x] Convert rift widths to kilometers. _(riftHalfWidth BFS bound + continuous `RIFT_FLOOR/SHOULDER_*_MULT·scaleFactor` floor/shoulder distances (buildSkeleton) via `widthKmToHopsFloat`.)_
 - [x] Convert foreland and back-arc distances. _(baStart/baPeak/baEnd. Foreland uses stress fractions, not hop widths.)_
 - [x] Convert shelf and continental slope widths. _(SHELF_NARROW/WIDE, SLOPE_WIDTH)_
 - [x] Convert trench/ridge/fracture influence widths. _(mid-ocean RIDGE_HW, FRACTURE; also COAST_BFS maxCD + COASTAL_PLAIN. Trench is a depth (normalized elev), not a width → Phase-2-style.)_
-- [~] Convert island-arc and volcano spacing/sigma. _(rounded `maxArcDist` (ARC_DIST) done; continuous arc `peakDist`/`sigma` + volcano spacing still pending — need `widthKmToHopsFloat`.)_
-- [ ] Convert hotspot dimensions and spacing. _(applyHotspotsAndLIPs)_
+- [x] Convert island-arc spacing/sigma. _(maxArcDist rounded + continuous arc `peakDist`/`sigma` via `widthKmToHopsFloat`. NOTE: volcano/hotspot dims below use unit-sphere CHORD distances (VOLC_*, DOME_*, CHAIN_SPACING), not the BASE·scaleFactor pattern — a separate chord→km conversion, not scale-coupled the same way.)_
+- [ ] Convert hotspot dimensions and spacing. _(applyHotspotsAndLIPs — chord-based; separate conversion, lower priority)_
+
+> ✅ **All `BASE·scaleFactor` feature-width sites are now migrated to physical km.** Remaining
+> `scaleFactor` uses in elevation.js are stress-math (decay/passes, keep) + a few now-unused destructures.
 - [x] Convert coastal roughening + island distance + uniform-noise mtn ramp. _(applyCoastalDetail: coastRoughenDist, islandMaxDist; applyUniformLandNoise: mtnRampDist via `sf.meshMetrics`; local scaleFactor removed there.)_
 - [ ] Convert continuous rift floor/shoulder multipliers (buildSkeleton ~1017-1019/1152/1154) via `widthKmToHopsFloat`.
 - [ ] Add cells-per-feature warnings.
