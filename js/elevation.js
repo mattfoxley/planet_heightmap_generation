@@ -621,7 +621,7 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
             }
         }
     }
-    const maxCD = Math.max(8, Math.round(COAST_BFS_WIDTH_BASE * scaleFactor));
+    const maxCD = widthKmToHops(baseWidthKm(COAST_BFS_WIDTH_BASE, meshMetrics.radiusKm), meshMetrics, 8);
     const dBdry = new Float32Array(numRegions);
     dBdry.fill(maxCD + 1);
     const coastStressMax = new Float32Array(numRegions);
@@ -658,7 +658,7 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
     }
 
     // Rift BFS (continental divergent)
-    const riftHalfWidth = Math.max(2, Math.round(RIFT_HALF_WIDTH_BASE * scaleFactor));
+    const riftHalfWidth = widthKmToHops(baseWidthKm(RIFT_HALF_WIDTH_BASE, meshMetrics.radiusKm), meshMetrics, 2);
     const riftDist = new Float32Array(numRegions).fill(Infinity);
     const riftSeeds = [];
     for (let r = 0; r < numRegions; r++) {
@@ -685,7 +685,7 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
     }
 
     // Mid-ocean ridge BFS (oceanic divergent)
-    const ridgeHalfWidth = Math.max(2, Math.round(RIDGE_HW_BASE * scaleFactor));
+    const ridgeHalfWidth = widthKmToHops(baseWidthKm(RIDGE_HW_BASE, meshMetrics.radiusKm), meshMetrics, 2);
     const ridgeDist = new Float32Array(numRegions).fill(Infinity);
     const ridgeSeeds = [];
     for (let r = 0; r < numRegions; r++) {
@@ -711,7 +711,7 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
     }
 
     // Fracture zone BFS (oceanic transform)
-    const fractureHalfWidth = Math.max(2, Math.round(FRACTURE_HALF_WIDTH_BASE * scaleFactor));
+    const fractureHalfWidth = widthKmToHops(baseWidthKm(FRACTURE_HALF_WIDTH_BASE, meshMetrics.radiusKm), meshMetrics, 2);
     const fractureDist = new Float32Array(numRegions).fill(Infinity);
     const fractureSeeds = [];
     for (let r = 0; r < numRegions; r++) {
@@ -737,9 +737,9 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
     }
 
     // Back-arc basin BFS (overriding side of oceanic-converging fronts)
-    const baStart = Math.max(1, Math.round(BACK_ARC_START_BASE * scaleFactor));
-    const baPeak  = Math.max(2, Math.round(BACK_ARC_PEAK_BASE * scaleFactor));
-    const baEnd   = Math.max(3, Math.round(BACK_ARC_END_BASE * scaleFactor));
+    const baStart = widthKmToHops(baseWidthKm(BACK_ARC_START_BASE, meshMetrics.radiusKm), meshMetrics, 1);
+    const baPeak  = widthKmToHops(baseWidthKm(BACK_ARC_PEAK_BASE, meshMetrics.radiusKm), meshMetrics, 2);
+    const baEnd   = widthKmToHops(baseWidthKm(BACK_ARC_END_BASE, meshMetrics.radiusKm), meshMetrics, 3);
     const backArcDist = new Float32Array(numRegions).fill(Infinity);
     const backArcStress = new Float32Array(numRegions);
     const backArcSeeds = [];
@@ -863,6 +863,7 @@ function classifyTerrain(mesh, r_xyz, tect, sf, seed) {
 // ─────────────────────────────────────────────────────────────────────────
 function buildSkeleton(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, tect, sf, tt, noise, noiseMag, seed, debugLayers) {
     const { numRegions } = mesh;
+    const { meshMetrics } = tect;   // Phase 3: physical width conversion (threaded via tect)
     const r_elevation = new Float32Array(numRegions);
     const dl_base       = debugLayers.base;
     const dl_tectonic   = debugLayers.tectonic;
@@ -1125,7 +1126,7 @@ function buildSkeleton(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds,
 
             // Passive margin coastal plain suppression
             {
-                const coastPlainWidth = Math.max(6, Math.round(COASTAL_PLAIN_WIDTH_BASE * scaleFactor));
+                const coastPlainWidth = widthKmToHops(baseWidthKm(COASTAL_PLAIN_WIDTH_BASE, meshMetrics.radiusKm), meshMetrics, 6);
                 if (lcd < coastPlainWidth && dBdry[r] <= maxCD && !coastConvergent[r]) {
                     const t = lcd / coastPlainWidth;
                     const fade = t * t * (3 - 2 * t);
@@ -1160,9 +1161,9 @@ function buildSkeleton(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds,
             const dc = dist_coast[r];
             const isActiveMarginShelf = coastConvergent[r] === 1;
             const shelfWidth = isActiveMarginShelf
-                ? Math.max(2, Math.round(SHELF_NARROW_BASE * scaleFactor))
-                : Math.max(4, Math.round(SHELF_WIDE_BASE * scaleFactor));
-            const slopeWidth = Math.max(3, Math.round(SLOPE_WIDTH_BASE * scaleFactor));
+                ? widthKmToHops(baseWidthKm(SHELF_NARROW_BASE, meshMetrics.radiusKm), meshMetrics, 2)
+                : widthKmToHops(baseWidthKm(SHELF_WIDE_BASE, meshMetrics.radiusKm), meshMetrics, 4);
+            const slopeWidth = widthKmToHops(baseWidthKm(SLOPE_WIDTH_BASE, meshMetrics.radiusKm), meshMetrics, 3);
             const totalMargin = shelfWidth + slopeWidth;
 
             let oceanBase;

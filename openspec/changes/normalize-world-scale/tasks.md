@@ -68,16 +68,19 @@
 - [x] Convert tectonic reach to kilometers. _(computeSpatialFields width block: interiorBand, tectonicReach, plateauStart — via widthKmToHops(baseWidthKm(...)))_
 - [x] Convert mountain ridge sigma/extent to kilometers. _(ridgeSigmaBase, ridgePeakShift, ridgeExtent)_
   - ✅ **Legacy parity verified in-pipeline:** re-ran seeds 42/100/200/400 × detail 400/600 → all 8 metrics BYTE-IDENTICAL to `tuning/baselines/earth/` (island/land/coast). Exact-parity proof holds in real generation.
-- [ ] Convert phasor wavelength and bandwidth to kilometers.
-- [ ] Convert direction smoothing to kilometers.
-- [ ] Convert rift widths to kilometers.
-- [ ] Convert foreland and back-arc distances.
-- [ ] Convert shelf and continental slope widths.
-- [ ] Convert trench/ridge/fracture influence widths.
-- [ ] Convert island-arc and volcano spacing/sigma.
-- [ ] Convert hotspot dimensions and spacing.
+- [ ] Convert phasor wavelength and bandwidth to kilometers. _(already `*_KM`; just re-point at profile.radiusKm + drop elevation.js:1403 `6371`)_
+- [ ] Convert direction smoothing to kilometers. _(PHASOR_DIRECTION_SMOOTHING_KM already km)_
+- [x] Convert rift widths to kilometers. _(riftHalfWidth BFS bound. NOTE: continuous `RIFT_*_MULT·scaleFactor` float distances at ~1010-1012/1147 still pending — need a no-round float km variant.)_
+- [x] Convert foreland and back-arc distances. _(baStart/baPeak/baEnd. Foreland uses stress fractions, not hop widths.)_
+- [x] Convert shelf and continental slope widths. _(SHELF_NARROW/WIDE, SLOPE_WIDTH)_
+- [x] Convert trench/ridge/fracture influence widths. _(mid-ocean RIDGE_HW, FRACTURE; also COAST_BFS maxCD + COASTAL_PLAIN. Trench is a depth (normalized elev), not a width → Phase-2-style.)_
+- [ ] Convert island-arc and volcano spacing/sigma. _(applyIslandArcs/applyVolcanicArcs take `sf` — thread meshMetrics first)_
+- [ ] Convert hotspot dimensions and spacing. _(applyHotspotsAndLIPs)_
 - [ ] Add cells-per-feature warnings.
 - [ ] Compare feature widths at 200k, 500k, and 1M regions.
+
+> Batch 2 legacy parity VERIFIED: seeds 42/100/200/400 × detail 400/600 all byte-identical to
+> `tuning/baselines/earth/`. (buildSkeleton now binds `meshMetrics` from `tect`.)
 
 ## Phase 4 — Warp and Smoothing
 
