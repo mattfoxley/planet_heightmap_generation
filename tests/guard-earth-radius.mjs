@@ -18,8 +18,8 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 const ALLOWLIST = new Set([
   'world-profiles.js',   // earthlike/legacy radiusKm — legitimate
   // --- legacy, pending migration (see inventory §2) ---
-  'elevation.js',        // TERRAIN — remove in Phase 3
-  'terrain-metrics.js',  // TERRAIN — Phase 1/3 (metrics km via profile radius)
+  // 'elevation.js' — MIGRATED (Phase 3): all 6371 removed → no longer allowlisted (ratchet tightened).
+  'terrain-metrics.js',  // TERRAIN — Phase 3 (metrics km via profile radius); next
   'heuristic-precip.js', // climate — deferred
   'ocean.js',            // climate — deferred
   'precipitation.js',    // climate — deferred

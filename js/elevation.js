@@ -1378,7 +1378,7 @@ function applyDetailTexture(mesh, r_xyz, r_elevation, tect, sf, noise, noiseMag,
 // ─────────────────────────────────────────────────────────────────────────
 function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, seed, debugLayers) {
     const { numRegions, adjOffset, adjList } = mesh;
-    const { r_stress, r_stressDir, r_subductFactor, maxStress } = tect;
+    const { r_stress, r_stressDir, r_subductFactor, maxStress, meshMetrics } = tect;
     const { r_isOcean } = sf;
     const { r_t_foldBelt } = tt;
     const dl_phasor = debugLayers.phasorRidge;
@@ -1389,9 +1389,9 @@ function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, see
     // varies in concert with the existing orogeny pattern.
     const dl_oroPower = debugLayers.orogenicPower;
 
-    // Convert physical km to unit-sphere angular units (R = 6371 km)
-    const wavelengthRad = PHASOR_WAVELENGTH_KM / 6371;
-    const bandwidthRad = PHASOR_BANDWIDTH_KM / 6371;
+    // Convert physical km to unit-sphere angular units (R = profile.radiusKm; Phase 3 world-scale)
+    const wavelengthRad = PHASOR_WAVELENGTH_KM / meshMetrics.radiusKm;
+    const bandwidthRad = PHASOR_BANDWIDTH_KM / meshMetrics.radiusKm;
     const frequency = 1 / wavelengthRad;
     const invBw2 = -0.5 / (bandwidthRad * bandwidthRad);
     // 3-sigma cutoff in chord-length squared (≈ angle² for small angles)
@@ -1407,7 +1407,7 @@ function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, see
     // Without this, the same constant pass count produced very different
     // physical radii at different mesh resolutions, making mountains
     // visibly less coherent at high detail.
-    const avgEdgeKm = (Math.PI * 6371) / Math.sqrt(numRegions);
+    const avgEdgeKm = meshMetrics.averageEdgeKm;   // = (π·radiusKm)/√numRegions (Phase 3 world-scale)
     const smoothingPasses = Math.max(2, Math.round(PHASOR_DIRECTION_SMOOTHING_KM / avgEdgeKm));
 
     const stressActiveFloor = PHASOR_STRESS_THRESHOLD * maxStress;
@@ -2523,7 +2523,7 @@ function fixupTopology(mesh, r_elevation, r_isOcean) {
 export function assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, noise, noiseMag, seed, spread, plateDensity, superPlateData, r_mantleField, meshMetrics) {
     const { numRegions } = mesh;
     // Phase 3: physical mesh metrics thread through generation. Default to the legacy profile radius
-    // (no 6371 literal) so callers that don't pass meshMetrics keep exact legacy behavior.
+    // (no Earth-radius literal) so callers that don't pass meshMetrics keep exact legacy behavior.
     const mm = meshMetrics || computeMeshPhysicalMetrics(numRegions, getWorldProfile('legacy').radiusKm);
     const _timing = [];
     let _t0 = performance.now();
