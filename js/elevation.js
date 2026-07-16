@@ -15,6 +15,9 @@
 
 import { makeRandInt, makeRng } from './rng.js';
 import { SimplexNoise } from './simplex-noise.js';
+import { computeMeshPhysicalMetrics } from './world-scale.js';
+import { getWorldProfile } from './world-profiles.js';
+import { baseWidthKm, widthKmToHops } from './terrain-widths.js';
 import {
     COLLISION_THRESHOLD, COLLISION_DT_BASE, COLLISION_DT_REF_REGIONS,
     PAIR_INTENSITY_BASE, SUBDUCT_UNDULATION_DENSITY_DECAY, SUBDUCT_UNDULATION_FREQ,
@@ -385,7 +388,7 @@ export function expandRegions(mesh, regions, steps) {
 //  Collisions × (small + super), blending, stress propagation, mantle
 //  modulation, plate-interior seeding, percentile normalization.
 // ─────────────────────────────────────────────────────────────────────────
-function computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, plateDensity, noise, superPlateData, r_mantleField, spread) {
+function computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, plateDensity, noise, superPlateData, r_mantleField, spread, meshMetrics) {
     const { numRegions } = mesh;
 
     let r_mantleNorm = null;
@@ -554,7 +557,7 @@ function computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plat
         mountain_r, coastline_r, ocean_r, stress_mountain_r,
         r_stress, r_stressDir, r_subductFactor, r_boundaryType,
         r_bothOcean, r_hasOcean, r_mantleNorm,
-        maxStress, scaleFactor
+        maxStress, scaleFactor, meshMetrics
     };
 }
 
@@ -564,7 +567,7 @@ function computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plat
 // ─────────────────────────────────────────────────────────────────────────
 function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, superPlateData) {
     const { numRegions, adjOffset, adjList } = mesh;
-    const { stress_mountain_r, coastline_r, ocean_r, r_boundaryType, r_bothOcean, r_hasOcean, r_subductFactor, r_stress, maxStress, scaleFactor } = tect;
+    const { stress_mountain_r, coastline_r, ocean_r, r_boundaryType, r_bothOcean, r_hasOcean, r_subductFactor, r_stress, maxStress, scaleFactor, meshMetrics } = tect;
     // Rift BFS uses super-plate IDs when available so expansion doesn't
     // stop at internal small-plate boundaries inside the same super plate.
     // r_boundaryType comes from super plates, so the seeds and the
@@ -773,12 +776,15 @@ function computeSpatialFields(mesh, r_xyz, r_plate, plateIsOcean, tect, seed, su
         ridgeDist, ridgeHalfWidth,
         fractureDist, fractureHalfWidth,
         backArcDist, backArcStress, baStart, baPeak, baEnd,
-        interiorBand:    Math.max(4, Math.round(INTERIOR_BAND_BASE * scaleFactor)),
-        tectonicReach:   Math.max(6, Math.round(TECTONIC_REACH_BASE * scaleFactor)),
-        plateauStart:    Math.max(2, Math.round(PLATEAU_START_BASE * scaleFactor)),
-        ridgeSigmaBase:  Math.max(2, Math.round(RIDGE_SIGMA_BASE_CFG * scaleFactor)),
-        ridgePeakShift:  Math.max(1, Math.round(RIDGE_PEAK_SHIFT_BASE * scaleFactor)),
-        ridgeExtent:     Math.max(4, Math.round(RIDGE_EXTENT_BASE * scaleFactor)),
+        // Phase 3 (normalize-world-scale): physical-km feature widths. Legacy/earthlike reproduces
+        // Math.round(BASE*scaleFactor) EXACTLY (proven, tests/terrain-widths.test.mjs); compact worlds
+        // get correctly-scaled widths from profile.radiusKm.
+        interiorBand:    widthKmToHops(baseWidthKm(INTERIOR_BAND_BASE,    meshMetrics.radiusKm), meshMetrics, 4),
+        tectonicReach:   widthKmToHops(baseWidthKm(TECTONIC_REACH_BASE,   meshMetrics.radiusKm), meshMetrics, 6),
+        plateauStart:    widthKmToHops(baseWidthKm(PLATEAU_START_BASE,    meshMetrics.radiusKm), meshMetrics, 2),
+        ridgeSigmaBase:  widthKmToHops(baseWidthKm(RIDGE_SIGMA_BASE_CFG,  meshMetrics.radiusKm), meshMetrics, 2),
+        ridgePeakShift:  widthKmToHops(baseWidthKm(RIDGE_PEAK_SHIFT_BASE, meshMetrics.radiusKm), meshMetrics, 1),
+        ridgeExtent:     widthKmToHops(baseWidthKm(RIDGE_EXTENT_BASE,     meshMetrics.radiusKm), meshMetrics, 4),
     };
 }
 
@@ -2513,8 +2519,11 @@ function fixupTopology(mesh, r_elevation, r_isOcean) {
 // ─────────────────────────────────────────────────────────────────────────
 //  Main orchestrator
 // ─────────────────────────────────────────────────────────────────────────
-export function assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, noise, noiseMag, seed, spread, plateDensity, superPlateData, r_mantleField) {
+export function assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, noise, noiseMag, seed, spread, plateDensity, superPlateData, r_mantleField, meshMetrics) {
     const { numRegions } = mesh;
+    // Phase 3: physical mesh metrics thread through generation. Default to the legacy profile radius
+    // (no 6371 literal) so callers that don't pass meshMetrics keep exact legacy behavior.
+    const mm = meshMetrics || computeMeshPhysicalMetrics(numRegions, getWorldProfile('legacy').radiusKm);
     const _timing = [];
     let _t0 = performance.now();
 
@@ -2538,7 +2547,7 @@ export function assignElevation(mesh, r_xyz, plateIsOcean, r_plate, plateVec, pl
     };
 
     // Stage 1
-    const tect = computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, plateDensity, noise, superPlateData, r_mantleField, spread);
+    const tect = computeTectonicState(mesh, r_xyz, plateIsOcean, r_plate, plateVec, plateSeeds, plateDensity, noise, superPlateData, r_mantleField, spread, mm);
     _timing.push({ stage: '1. Tectonic state', ms: performance.now() - _t0 }); _t0 = performance.now();
 
     // Stage 2

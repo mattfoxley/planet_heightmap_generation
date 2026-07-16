@@ -64,8 +64,10 @@
   (`baseWidthKm`, `widthKmToHops`) reproduces `round(BASE·scaleFactor)` EXACTLY — max hop diff 0 across
   7 resolutions (tests/terrain-widths.test.mjs, 79/79). Migration pattern locked; each site can move to
   km with zero legacy-output change.
-- [ ] Convert tectonic reach to kilometers.
-- [ ] Convert mountain ridge sigma/extent to kilometers.
+- [x] **Thread `meshMetrics`/profile** through `assignElevation → computeTectonicState → tect` (worker passes it; defaults to legacy-profile radius, no 6371 literal).
+- [x] Convert tectonic reach to kilometers. _(computeSpatialFields width block: interiorBand, tectonicReach, plateauStart — via widthKmToHops(baseWidthKm(...)))_
+- [x] Convert mountain ridge sigma/extent to kilometers. _(ridgeSigmaBase, ridgePeakShift, ridgeExtent)_
+  - ✅ **Legacy parity verified in-pipeline:** re-ran seeds 42/100/200/400 × detail 400/600 → all 8 metrics BYTE-IDENTICAL to `tuning/baselines/earth/` (island/land/coast). Exact-parity proof holds in real generation.
 - [ ] Convert phasor wavelength and bandwidth to kilometers.
 - [ ] Convert direction smoothing to kilometers.
 - [ ] Convert rift widths to kilometers.
