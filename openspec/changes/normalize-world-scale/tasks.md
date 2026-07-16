@@ -21,21 +21,27 @@
 > Phase 1 (physical-scale infrastructure: profiles + conversion helpers + guard test) may begin.
 > Carry forward: heightmap-PNG baseline export, and the seed×detail collision investigation.
 
-## Phase 1 — Physical Scale Infrastructure
+## Phase 1 — Physical Scale Infrastructure  ✅
 
-- [ ] Add `js/world-profiles.js`.
-- [ ] Add `js/world-scale.js`.
-- [ ] Implement:
-  - [ ] `angularDistanceRad`
-  - [ ] `angularToKm`
-  - [ ] `kmToAngular`
-  - [ ] `computeMeshPhysicalMetrics`
-  - [ ] `kmToApproxHops`
-  - [ ] `cellsAcrossFeature`
-- [ ] Add `legacy`, `earthlike`, and `compact-40km` profiles.
-- [ ] Thread selected profile through worker/generation context.
-- [ ] Add unit tests for conversion helpers.
-- [ ] Add repository guard test for direct `6371` usage.
+- [x] Add `js/world-profiles.js`.
+- [x] Add `js/world-scale.js`.
+- [x] Implement:
+  - [x] `angularDistanceRad`
+  - [x] `angularToKm`
+  - [x] `kmToAngular`
+  - [x] `computeMeshPhysicalMetrics`
+  - [x] `kmToApproxHops`
+  - [x] `cellsAcrossFeature`
+  - [x] (extra) `chordToAngularRad`, `averageEdgeAngleRad`, `clamp`, `dot3`
+- [x] Add `legacy`, `earthlike`, and `compact-40km` profiles. _(legacy = default; earthlike feature scales left to legacy fallback until tuned)_
+- [x] Thread selected profile through worker/generation context. _(planet-worker.js: `getWorldProfile(data.profileId)` + `computeMeshPhysicalMetrics` in both handleGenerate & handleImportHeightmap; surfaced in `done` payload as `worldProfile`/`meshMetrics`. Default legacy → zero behavior change; verified in-browser: generation completes, no console errors.)_
+- [x] Add unit tests for conversion helpers. _(tests/world-scale.test.mjs — 19/19 pass)_
+- [x] Add repository guard test for direct `6371` usage. _(tests/guard-earth-radius.mjs — ratchet, PASS; 8 legacy sites allowlisted, target → 1)_
+
+> Notes: running the `.mjs` tests needs a **local `package.json` with `"type":"module"`** so Node
+> imports `js/*.js` as ESM. `package.json` is **gitignored** (repo convention — the existing tuning
+> `.mjs` suite has the same requirement), so it is NOT committed; see `tests/README.md`. Node 12.16.3
+> also needs `--experimental-modules`. No `main.js` / UI change yet — a profile selector is a later phase.
 
 ## Phase 2 — Elevation Physicalization
 

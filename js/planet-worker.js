@@ -17,6 +17,8 @@ import { classifyKoppen } from './koppen.js';
 import { computeTerrainMetrics } from './terrain-metrics.js';
 import { applyPlatePhysics, expandPlatePhysicsDebug } from './plate-physics.js';
 import { SUPER_PLATE_PHYSICS_MULT, DETAIL_NOISE_DAMPEN_STRENGTH } from './terrain-config.js';
+import { getWorldProfile } from './world-profiles.js';
+import { computeMeshPhysicalMetrics } from './world-scale.js';
 import Delaunator from 'https://cdn.jsdelivr.net/npm/delaunator@5.0.1/+esm';
 
 setDelaunator(Delaunator);
@@ -204,9 +206,15 @@ function handleGenerate(data) {
         const seed = overrideSeed ?? Math.floor(Math.random() * 16777216);
         const rng = makeRng(seed);
 
+        // Phase-1 world-scale threading: resolve the selected profile (legacy default → unchanged
+        // behavior) so it flows through the generation context. No algorithm consumes it yet; later
+        // phases read profile + meshMetrics instead of inline (π·6371)/√N.
+        const profile = getWorldProfile(data.profileId);
+
         let t0 = performance.now();
         const { mesh, r_xyz } = buildSphere(N, jitter, rng);
         timing.push({ stage: 'Sphere mesh (Fibonacci + Delaunay + pole)', ms: performance.now() - t0 });
+        const meshMetrics = computeMeshPhysicalMetrics(mesh.numRegions, profile.radiusKm);
 
         t0 = performance.now();
         const neighborDist = computeNeighborDist(mesh, r_xyz);
@@ -457,6 +465,8 @@ function handleGenerate(data) {
             _postTiming: postTiming,          // post-processing sub-stages
             _workerTotal: tWorkerTotal,
             _params: { N, P, jitter, nMag, numContinents, smoothing, terrainWarp, hydraulicErosion, thermalErosion, ridgeSharpening, glacialErosion, continentSizeVariety, temperatureOffset, precipitationOffset, landCoverage, seed },
+            worldProfile: profile.id,   // Phase-1 world-scale threading (diagnostic; legacy default)
+            meshMetrics,
             terrainMetrics
         };
 
@@ -920,10 +930,12 @@ function handleImportHeightmap(data) {
         progress(0, 'Building sphere mesh\u2026');
         const seed = overrideSeed ?? Math.floor(Math.random() * 16777216);
         const rng = makeRng(seed);
+        const profile = getWorldProfile(data.profileId);   // Phase-1 world-scale threading (legacy default)
 
         let t0 = performance.now();
         const { mesh, r_xyz } = buildSphere(N, jitter, rng);
         timing.push({ stage: 'Sphere mesh', ms: performance.now() - t0 });
+        const meshMetrics = computeMeshPhysicalMetrics(mesh.numRegions, profile.radiusKm);
 
         t0 = performance.now();
         const neighborDist = computeNeighborDist(mesh, r_xyz);
@@ -1068,7 +1080,9 @@ function handleImportHeightmap(data) {
             _pipelineTiming: timing,
             _postTiming: postTiming,
             _workerTotal: tWorkerTotal,
-            _params: { N, P: 0, jitter, nMag, numContinents: 0, smoothing, terrainWarp, hydraulicErosion, thermalErosion, ridgeSharpening, glacialErosion, seed }
+            _params: { N, P: 0, jitter, nMag, numContinents: 0, smoothing, terrainWarp, hydraulicErosion, thermalErosion, ridgeSharpening, glacialErosion, seed },
+            worldProfile: profile.id,   // Phase-1 world-scale threading (diagnostic; legacy default)
+            meshMetrics
         };
 
         const transferList = [
