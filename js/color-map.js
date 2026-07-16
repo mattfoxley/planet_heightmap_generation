@@ -3,11 +3,19 @@
 import { elevNormToHeightKm, LEGACY_ELEVATION } from './elevation-scale.js';
 
 // Convert raw mesh elevation (nonlinear, 0-~1 for land) to physical height in kilometres.
-// Centralized in elevation-scale.js (Phase 2 normalize-world-scale); this legacy entry point keeps
-// the same signature + the Earth-calibrated curve (LEGACY_ELEVATION): land 6·t⁴·(5-4t), ocean elev·10.
-// (0→0, 0.25→0.09, 0.5→1.13, 0.75→3.80, 1.0→6.)
+// Centralized in elevation-scale.js (Phase 2 normalize-world-scale). The ACTIVE elevation profile is set
+// per-generation via setElevationProfile (Phase 10) — so a compact world uses its own maxLandHeightKm
+// (e.g. 4 km) instead of the Earth 6 km curve. Defaults to LEGACY_ELEVATION so nothing changes until a
+// non-legacy planet is generated. (Legacy: 0→0, 0.25→0.09, 0.5→1.13, 0.75→3.80, 1.0→6 km.)
+let _elevation = LEGACY_ELEVATION;
+
+/** Set the active elevation profile (a {maxLandHeightKm, oceanScaleKmPerUnit} block, or null → legacy). */
+export function setElevationProfile(elev) {
+    _elevation = elev || LEGACY_ELEVATION;
+}
+
 export function elevToHeightKm(elev) {
-    return elevNormToHeightKm(elev, LEGACY_ELEVATION);
+    return elevNormToHeightKm(elev, _elevation);
 }
 
 // Biome base colors indexed by Köppen class ID (satellite-view palette).

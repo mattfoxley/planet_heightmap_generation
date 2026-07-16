@@ -246,7 +246,19 @@ function handleGenerate(data) {
         // Phase-1 world-scale threading: resolve the selected profile (legacy default → unchanged
         // behavior) so it flows through the generation context. No algorithm consumes it yet; later
         // phases read profile + meshMetrics instead of inline (π·R)/√N.
-        const profile = getWorldProfile(data.profileId);
+        let profile = getWorldProfile(data.profileId);
+        // Tuning hook (Phase 10): a generate message may carry `profileOverride` to merge experimental
+        // values over the resolved profile WITHOUT editing world-profiles.js / reloading (top-level +
+        // nested elevation/tectonics/terrain/erosion). The UI never sends it → no effect in normal use.
+        if (data.profileOverride) {
+            const ov = data.profileOverride;
+            profile = { ...profile, ...ov,
+                elevation: { ...profile.elevation, ...(ov.elevation || {}) },
+                tectonics: { ...(profile.tectonics || {}), ...(ov.tectonics || {}) },
+                terrain:   { ...(profile.terrain   || {}), ...(ov.terrain   || {}) },
+                erosion:   { ...(profile.erosion   || {}), ...(ov.erosion   || {}) },
+            };
+        }
 
         let t0 = performance.now();
         const { mesh, r_xyz } = buildSphere(N, jitter, rng);
@@ -473,6 +485,8 @@ function handleGenerate(data) {
                 debugLayers,
                 prePostElev: W.prePostElev,
                 radiusKm: meshMetrics.radiusKm,   // Phase 3: metrics km via profile radius (not an Earth literal)
+                elevation: profile.elevation,     // Phase 10: relative-scale height (km) conversion
+                neighborDist: W.neighborDist,     // Phase 10: physical inter-cell slope (degrees)
             });
         } catch (e) {
             terrainMetrics = { _error: e.message };

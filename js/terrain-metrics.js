@@ -6,10 +6,14 @@
 // debug layers, and returns a plain object of named scores.
 
 import { getWorldProfile } from './world-profiles.js';
+import { elevNormToHeightKm } from './elevation-scale.js';
+import { chordToAngularRad, angularToKm } from './world-scale.js';
 
 // Physical radius used for hop→km metrics. Set per-generation from ctx.radiusKm at the top of
 // computeTerrainMetrics; defaults to the legacy (Earth) profile so behavior is unchanged.
 let _metricsRadiusKm = getWorldProfile('legacy').radiusKm;
+// Active elevation profile for normalized→km height (relative-scale metrics). Set from ctx.elevation.
+let _metricsElevation = getWorldProfile('legacy').elevation;
 
 // ────────────────────────────────────────────────────────────────────
 //  Helpers
@@ -804,8 +808,65 @@ function backArcFoldPresence(ctx) {
  *   r_stress, debugLayers, prePostElev (optional)
  * @returns {Object} flat scorecard of named metrics
  */
+/**
+ * Relative-scale metrics (Phase 10 experiment): physical land HEIGHT (km) and inter-cell SLOPE (degrees)
+ * distributions, plus a mountain-run WIDTH proxy — the numbers needed to judge whether terrain is
+ * proportional on the target sphere. Slopes use physical km on both axes (heightKm rise / chordKm run),
+ * so they are the true physical steepness, independent of the render's normalized exaggeration.
+ */
+function physicalScale(ctx) {
+    const { mesh, r_elevation, neighborDist } = ctx;
+    const N = mesh.numRegions, { adjOffset, adjList } = mesh;
+    const elev = _metricsElevation;
+
+    const heights = [];
+    for (let r = 0; r < N; r++) if (r_elevation[r] > 0) heights.push(elevNormToHeightKm(r_elevation[r], elev));
+    if (heights.length === 0) return { peak_height_km_max: 0 };
+    heights.sort((a, b) => a - b);
+    const hp = (p) => heights[Math.min(heights.length - 1, Math.floor(p * heights.length))];
+
+    // Inter-cell slope (degrees): physical km on both axes. neighborDist is unit-sphere chord.
+    const slopes = [];
+    if (neighborDist) {
+        for (let r = 0; r < N; r++) {
+            if (r_elevation[r] <= 0) continue;
+            const hr = elevNormToHeightKm(r_elevation[r], elev);
+            for (let i = adjOffset[r], iEnd = adjOffset[r + 1]; i < iEnd; i++) {
+                const nb = adjList[i];
+                if (nb <= r || r_elevation[nb] <= 0) continue;
+                const distKm = angularToKm(chordToAngularRad(neighborDist[i]), _metricsRadiusKm);
+                if (distKm > 0) slopes.push(Math.atan(Math.abs(hr - elevNormToHeightKm(r_elevation[nb], elev)) / distKm) * 180 / Math.PI);
+            }
+        }
+        slopes.sort((a, b) => a - b);
+    }
+    const sp = (p) => slopes.length ? slopes[Math.min(slopes.length - 1, Math.floor(p * slopes.length))] : null;
+
+    // Mountain-run width proxy: connected components of "mountain" cells (height ≥ p90); width ≈
+    // sqrt(cellCount)·avgEdgeKm (isotropic-blob approx). Median over components ≥ 4 cells.
+    const edgeKm = angularToKm(Math.PI / Math.sqrt(N), _metricsRadiusKm);
+    const thr = hp(0.90);
+    const mtnMask = new Uint8Array(N);
+    for (let r = 0; r < N; r++) if (r_elevation[r] > 0 && elevNormToHeightKm(r_elevation[r], elev) >= thr) mtnMask[r] = 1;
+    const { components } = connectedComponents(mesh, mtnMask);
+    const widths = components.filter(c => c.cells.size >= 4).map(c => Math.sqrt(c.cells.size) * edgeKm).sort((a, b) => a - b);
+    const mtnWidth = widths.length ? widths[Math.floor(0.5 * widths.length)] : 0;
+
+    return {
+        peak_height_km_max: +hp(1).toFixed(3),
+        peak_height_km_p99: +hp(0.99).toFixed(3),
+        peak_height_km_p50: +hp(0.50).toFixed(3),
+        slope_deg_p50: sp(0.50) == null ? null : +sp(0.50).toFixed(2),
+        slope_deg_p95: sp(0.95) == null ? null : +sp(0.95).toFixed(2),
+        slope_deg_max: sp(1) == null ? null : +sp(1).toFixed(2),
+        mountain_run_width_km: +mtnWidth.toFixed(3),
+        avg_edge_km: +edgeKm.toFixed(4),
+    };
+}
+
 export function computeTerrainMetrics(ctx) {
     if (ctx.radiusKm) _metricsRadiusKm = ctx.radiusKm;   // Phase 3: metrics km via profile radius
+    if (ctx.elevation) _metricsElevation = ctx.elevation; // Phase 10: relative-scale height conversion
     // Normalize plateIsOcean to an iterable of seed region IDs
     if (ctx.plateIsOcean instanceof Set) {
         ctx.plateIsOcean = Array.from(ctx.plateIsOcean);
@@ -828,6 +889,7 @@ export function computeTerrainMetrics(ctx) {
     const gradient = interiorGradient(ctx);
     const hotspot = hotspotDistinctiveness(ctx);
     const backArcFold = backArcFoldPresence(ctx);
+    const physScale = physicalScale(ctx);
 
     const elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
 
@@ -835,7 +897,7 @@ export function computeTerrainMetrics(ctx) {
     const scorecard = {};
     for (const partial of [silhouette, drama, coast, oceanFloor, flatOcean, hyps,
                            mtnBoundary, orogenic, erosion, islands, lowland,
-                           shelf, gradient, hotspot, backArcFold]) {
+                           shelf, gradient, hotspot, backArcFold, physScale]) {
         for (const [k, v] of Object.entries(partial)) {
             if (!k.startsWith('_')) scorecard[k] = v;
         }

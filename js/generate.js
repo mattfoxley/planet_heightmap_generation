@@ -4,6 +4,8 @@
 import Delaunator from 'delaunator';
 import { setDelaunator, SphereMesh } from './sphere-mesh.js';
 import { computePlateColors, buildMesh } from './planet-mesh.js';
+import { setElevationProfile } from './color-map.js';
+import { getWorldProfile } from './world-profiles.js';
 import { state } from './state.js';
 import { detailFromSlider } from './detail-scale.js';
 import { computeOceanCurrents } from './ocean.js';
@@ -241,6 +243,9 @@ if (worker) {
                     terrainMetrics: msg.terrainMetrics || null
                 };
                 if (msg.terrainMetrics) window.__terrainMetrics = msg.terrainMetrics;
+                // Phase 10: set the active elevation profile so color/height/heightmap-export use the
+                // world's own maxLandHeightKm (compact = 4 km) instead of the Earth 6 km curve.
+                if (msg.worldProfile) setElevationProfile(getWorldProfile(msg.worldProfile).elevation);
                 const tState = performance.now() - tStateStart;
 
                 // Main-thread fallbacks — only run when climate was requested but partially missing
