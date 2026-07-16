@@ -225,7 +225,7 @@
 - [x] Height sweep: `maxLandHeightKm` is the slope lever (4→71°, 2→55°, 1.5→47°, 1→35° p95). Terrain widths (`ridgeSpacing/envelope`) do NOT move run width (set by phasor 55 km + noise, not profile fields).
 - [x] Sculpt sweep @ 2.5 km: **thermal erosion is the flank-taming lever** — thermal 0.1→0.6 drops p95 47°→**31°** (angle-of-repose grinding of over-steep flanks). Roughness↓ + smoothing↑ help secondarily.
 - [x] **Locked tuned compact baseline:** `maxLandHeightKm 2.5` (+ clamps/typicalMountain 1.0) and a recommended `sculpt` preset (noise 0.1, smoothing 0.3, thermal 0.6, hydraulic 0.5, ridge 0.3) applied to the sliders on profile-select (generate.js). Result: broad massifs, **p95 ≈ 31°**, peaks to ~2.5 km where the base is wide (effective p99 ≈ 1.3 km) — the "taller + broad ranges" target.
-- [~] Re-validate the baked baseline in-browser. _(Sweeps measured the exact config; final baked-profile confirmation was impeded by this session's degraded worker — user can verify in a fresh browser: `?profile=compact-40km` → `window.__terrainMetrics.slope_deg_p95`.)_
+- [x] Re-validate the baked baseline in-browser. _(Tuned compact profile + sculpt preset, seed 42 @ detail 400: **slope p95 30.6°** (was 71°), p50 1.3°, peak max 2.06 km / p99 1.3 km — matches the sweep prediction (31°). Coherent proportional terrain confirmed; renders as broad massifs, not spikes.)_
 - [ ] Widen mountain RUN width into multi-km ranges (phasor/detail wavelengths → profile-scalable). _(Follow-up: runs are ~1.3 km; thermal gives broad massifs but the fine texture wavelength is still fixed. Optional further experiment.)_
 
 ## Phase 11 — Earth Regression
