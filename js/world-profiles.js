@@ -13,6 +13,8 @@ export const LEGACY_PROFILE = {
   radiusKm: 6371,          // HEIGHT_KM/DISTANCE_KM reference — Earth
   climateEnabled: true,
   legacy: true,            // algorithms keep using terrain-config.js constants directly
+  // Elevation curve params consumed by elevation-scale.js; these reproduce color-map's legacy curve.
+  elevation: { maxLandHeightKm: 6, oceanScaleKmPerUnit: 10 },
 };
 
 // EARTHLIKE: the radius-normalized profile that should reproduce Earth behavior once subsystems read it.
@@ -22,6 +24,8 @@ export const EARTHLIKE_PROFILE = {
   radiusKm: 6371,
   climateEnabled: true,
   elevation: {
+    // Earth parity: same curve endpoints as the legacy conversion.
+    maxLandHeightKm: 6, oceanScaleKmPerUnit: 10,
     maxOceanDepthKm: 6.0,
     typicalLandKm: 0.5,
     typicalMountainKm: 4.0,
@@ -39,6 +43,9 @@ export const COMPACT_40KM_PROFILE = {
   climateEnabled: false,   // Earth latitude climate invalid on an interior sphere (design §13)
 
   elevation: {
+    // EXPERIMENTAL curve endpoints (Phase 10 tuning). maxLandHeightKm = exceptional peak; ocean scale
+    // chosen so a deep abyss (~elevNorm -0.33) reaches ~-2 km. TODO(experiment): tune against relief targets.
+    maxLandHeightKm: 4.0, oceanScaleKmPerUnit: 6.0,
     maxOceanDepthKm: 2.0,
     typicalLandKm: 0.25,
     typicalMountainKm: 1.5,

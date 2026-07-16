@@ -1,14 +1,13 @@
 // Elevation → RGB colour mapping.
 
-// Convert raw mesh elevation (nonlinear, 0-~1 for land) to physical height
-// in kilometres.  Hybrid S-curve: quartic start gives extensive flatlands,
-// steepest rise around t≈0.75, derivative→0 at top so peaks compress.
-// Ocean (elev < 0) is mapped with a linear scale (~5 km at -0.5).
+import { elevNormToHeightKm, LEGACY_ELEVATION } from './elevation-scale.js';
+
+// Convert raw mesh elevation (nonlinear, 0-~1 for land) to physical height in kilometres.
+// Centralized in elevation-scale.js (Phase 2 normalize-world-scale); this legacy entry point keeps
+// the same signature + the Earth-calibrated curve (LEGACY_ELEVATION): land 6·t⁴·(5-4t), ocean elev·10.
+// (0→0, 0.25→0.09, 0.5→1.13, 0.75→3.80, 1.0→6.)
 export function elevToHeightKm(elev) {
-    if (elev <= 0) return elev * 10;  // ocean: -0.5 → -5 km
-    const t = Math.min(elev, 1);
-    const t2 = t * t;
-    return 6 * t2 * t2 * (5 - 4 * t);  // 0→0, 0.25→0.09, 0.5→1.13, 0.75→3.80, 1.0→6
+    return elevNormToHeightKm(elev, LEGACY_ELEVATION);
 }
 
 // Biome base colors indexed by Köppen class ID (satellite-view palette).

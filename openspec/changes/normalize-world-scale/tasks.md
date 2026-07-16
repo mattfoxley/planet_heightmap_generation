@@ -43,15 +43,19 @@
 > `.mjs` suite has the same requirement), so it is NOT committed; see `tests/README.md`. Node 12.16.3
 > also needs `--experimental-modules`. No `main.js` / UI change yet — a profile selector is a later phase.
 
-## Phase 2 — Elevation Physicalization
+## Phase 2 — Elevation Physicalization  (core done; export-mode + debug-layer remain)
 
-- [ ] Centralize normalized-elevation-to-kilometer conversion.
-- [ ] Parameterize land maximum and ocean depth.
-- [ ] Implement inverse kilometer-to-normalized-elevation conversion.
-- [ ] Add round-trip tests across representative elevations.
-- [ ] Add linear physical-height export mode.
-- [ ] Preserve legacy export mode.
-- [ ] Add physical elevation debug layer.
+- [x] Centralize normalized-elevation-to-kilometer conversion. _(js/elevation-scale.js; color-map.js `elevToHeightKm` now delegates — exact parity, verified in-browser & unit tests)_
+- [x] Parameterize land maximum and ocean depth. _(profile.elevation.maxLandHeightKm / oceanScaleKmPerUnit; legacy=6/10, compact=4/6)_
+- [x] Implement inverse kilometer-to-normalized-elevation conversion. _(heightKmToElevNorm — ocean linear, land bisection on monotonic g(t))_
+- [x] Add round-trip tests across representative elevations. _(tests/elevation-scale.test.mjs — 43/43 pass; sea-level, peak, ocean sign/depth, compact endpoints)_
+- [ ] Add linear physical-height export mode. _(planet-mesh.js — next)_
+- [ ] Preserve legacy export mode. _(legacy export currently unchanged; formalize alongside the new mode)_
+- [ ] Add physical elevation debug layer. _(worker debugLayers + UI — next)_
+
+> Core conversion (centralize + parameterize + inverse + tests) complete & legacy-parity verified.
+> Remaining: linear-physical-km export mode + metadata JSON (design §14) and the physical-elevation
+> debug layer — both additive, touch the export path / UI.
 
 ## Phase 3 — Terrain Feature Width Migration
 

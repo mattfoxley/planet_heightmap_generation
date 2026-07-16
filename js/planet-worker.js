@@ -208,7 +208,7 @@ function handleGenerate(data) {
 
         // Phase-1 world-scale threading: resolve the selected profile (legacy default → unchanged
         // behavior) so it flows through the generation context. No algorithm consumes it yet; later
-        // phases read profile + meshMetrics instead of inline (π·6371)/√N.
+        // phases read profile + meshMetrics instead of inline (π·R)/√N.
         const profile = getWorldProfile(data.profileId);
 
         let t0 = performance.now();
