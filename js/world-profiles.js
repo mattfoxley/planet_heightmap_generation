@@ -64,9 +64,11 @@ export const COMPACT_40KM_PROFILE = {
     // 0.65 for gentler/shorter mountains, lower it toward 0.3 for taller/steeper — the tall-peak vs
     // sane-slope trade-off is inherent until broad-uplift mountain generation exists (see docs).
     noise: 0.15, smoothing: 0.2, thermalErosion: 0.5, hydraulicErosion: 0.35, ridgeSharpening: 0.12,
-    // generation sliders: max land coverage (landCoverage slider only reaches ~42% land — see limitation
-    // note; true mostly-land needs land-biased plate assignment), few coherent plates, few large continents.
-    landCoverage: 0.9, plates: 12, continents: 3,
+    // generation sliders (measured): MOSTLY-LAND comes from FEW continents, not plate count / landCoverage.
+    // ocean-land.js only assigns a plate to a continent if it touches no OTHER continent, so 3+ continents
+    // leave permanent ocean corridors that cap land at ~42%. With 2 continents the corridors vanish and land
+    // reaches the target — measured 69% land at landCoverage 0.7 (spec: "2–4 major land regions").
+    landCoverage: 0.7, plates: 12, continents: 2,
   },
   tectonics: {
     plateCountRange: [8, 18], initialPlateCount: 12,
