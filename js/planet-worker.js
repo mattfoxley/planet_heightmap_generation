@@ -88,7 +88,15 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
     let carveRadiusHops = null;    // §8.6 physical canyon width (hops), decoupled from path length
     let maxRidgeAddedNorm = Infinity; // §11.2 ridge max-added-height cap (normalized)
     let ridgeSharpenScale = 1;     // §11.2 reduced compact baseline sharpening
+    // Resolution-independent flank grinding: thermal + smoothing reach is otherwise CELL-based (N iterations
+    // ≈ N cells), so its physical km reach shrinks ~√N as detail rises → high-detail terrain spikes and
+    // mountain runs fragment (measured: slope p95 27°→57°, run 4.6→0.8 km from 11k→204k regions). Scaling
+    // their iteration counts by √(N / tuningRegions) (capped) holds the km reach ≈ constant, so the tuned
+    // look transfers to any detail. Gated to physical profiles → legacy iteration counts unchanged.
+    let erosionIterScale = 1;
     if (physicalErosion) {
+        const refRegions = (profile.erosion && profile.erosion.tuningRegions) || 11000;
+        erosionIterScale = Math.min(8, Math.max(1, Math.sqrt(meshMetrics.numRegions / refRegions)));
         const er = profile.erosion, m = 0.5;
         const refKm = (profile.elevation && profile.elevation.typicalMountainKm) || 1.0; // caps operate on land
         const runoff = resolveUniformRunoff(profile);
@@ -121,7 +129,7 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
     const preErosion = new Float32Array(r_elevation);
 
     if (smoothing > 0) {
-        const smoothIters = Math.round(1 + smoothing * 4);
+        const smoothIters = Math.round((1 + smoothing * 4) * erosionIterScale);   // Phase 10: ×1 legacy, resolution-scaled in physical mode
         const smoothStr = 0.2 + smoothing * 0.5;
         const t0 = performance.now();
         smoothElevation(mesh, r_elevation, r_isOcean, smoothIters, smoothStr);
@@ -167,7 +175,7 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
         const gIters = Math.round(effGlacial * 10);
         const hIters = Math.round(hydraulicErosion * 20);
         const hK = hydraulicErosion * 0.0006 * hydraulicKScale;   // Phase 10: ×1 legacy, recalibrated in physical mode
-        const tIters = Math.round(thermalErosion * 10);
+        const tIters = Math.round(thermalErosion * 10 * erosionIterScale);   // Phase 10: resolution-scaled flank grinding (physical mode)
         const talusSlope = 1.2 - thermalErosion * 0.4;
         const kThermal = thermalErosion * 0.15;
         const t0 = performance.now();
