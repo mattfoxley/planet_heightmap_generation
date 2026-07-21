@@ -5,7 +5,7 @@ import { renderer, scene, camera, ctrl, waterMesh, atmosMesh, starsMesh,
          mapCamera, updateMapCameraFrustum, mapCtrl, canvas,
          tickZoom, tickMapZoom } from './scene.js';
 import { state } from './state.js';
-import { generate, reapplyViaWorker, computeClimateViaWorker, editRecomputeViaWorker } from './generate.js';
+import { generate, reapplyViaWorker, computeClimateViaWorker, editRecomputeViaWorker, applyProfileSculptDefaults } from './generate.js';
 import { encodePlanetCode, decodePlanetCode } from './planet-code.js';
 import { buildMesh, updateMeshColors, updateSuperPlateBorders, buildMapMesh, rebuildGrids, exportMap, exportMapBatch, buildWindArrows, buildOceanCurrentArrows, updateKoppenHoverHighlight, updateMapKoppenHoverHighlight, updatePendingHighlight, updateMapPendingHighlight } from './planet-mesh.js';
 import { setupEditMode } from './edit-mode.js';
@@ -175,6 +175,11 @@ for (const [s,v] of [['sN','vN'],['sP','vP'],['sCn','vCn'],['sJ','vJ'],['sNs','v
         });
     }
 }
+
+// Apply the selected profile's sculpt preset now that the slider label-update listeners exist (above)
+// and before the initial generate (below) — so the displayed slider values match the preset the first
+// world is built from. No-op for profiles without a `sculpt` block (e.g. legacy).
+applyProfileSculptDefaults();
 
 // Force range input re-render when <details> sections are opened.
 // Browsers may not update the visual thumb position for sliders that were

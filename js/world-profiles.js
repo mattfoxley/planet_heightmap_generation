@@ -50,13 +50,15 @@ export const COMPACT_40KM_PROFILE = {
     // not a routine height. `hypsometricExponent` replaces the strongly bottom-heavy legacy t⁴(5−4t) curve
     // with the gentler t^p so the land distribution is weighted to lowlands/uplands (median ~300–500 m)
     // instead of crushing everything near sea level. Oceans are shallow (limited deep water on a 40 km world).
-    maxLandHeightKm: 4.0, hypsometricExponent: 1.6, oceanScaleKmPerUnit: 2.5,
+    // Tuned to the visual-summary spec (measured sweep, seed 42 @ detail 300): median ~320 m, p90 ~1.43 km,
+    // p99 ~2.82 km, rare peaks to ~3.9 km; ~74% of land below 800 m; mountain terrain ~10%.
+    maxLandHeightKm: 4.2, hypsometricExponent: 1.5, oceanScaleKmPerUnit: 2.5,
     maxOceanDepthKm: 2.0,
     typicalLandKm: 0.4,          // median land target (spec: 300–500 m)
     typicalMountainKm: 1.5,
     highMountainKm: 2.8,
-    exceptionalPeakKm: 4.0,
-    hardPeakClampKm: 4.2,
+    exceptionalPeakKm: 4.2,
+    hardPeakClampKm: 4.5,
   },
   // Compact-spec erosion balance: moderate hydraulic, LOW-moderate thermal, very low ridge sharpening,
   // light smoothing, low roughness (noise modifies forms, doesn't define them). Glacial off. Applied to
@@ -66,7 +68,11 @@ export const COMPACT_40KM_PROFILE = {
     // p95 ≈ 41°) while keeping the spec hypsometry (median ~315 m, max ~3.2 km). Raise thermal toward
     // 0.65 for gentler/shorter mountains, lower it toward 0.3 for taller/steeper — the tall-peak vs
     // sane-slope trade-off is inherent until broad-uplift mountain generation exists (see docs).
-    noise: 0.15, smoothing: 0.2, thermalErosion: 0.5, hydraulicErosion: 0.35, ridgeSharpening: 0.12,
+    // Tuned to the visual spec: LOW roughness (mountains only where tectonics builds them, not uniform
+    // mini-mountains everywhere) + STRONG thermal erosion (grinds flanks to broad, coherent massifs with
+    // deeply organized drainage, run width ~4.6 km vs ~2 km scattered). Few plates (12) → a few large
+    // tectonic provinces. See the visual-summary sweep.
+    noise: 0.1, smoothing: 0.2, thermalErosion: 0.7, hydraulicErosion: 0.35, ridgeSharpening: 0.12,
     // generation sliders (measured): MOSTLY-LAND comes from FEW continents, not plate count / landCoverage.
     // ocean-land.js only assigns a plate to a continent if it touches no OTHER continent, so 3+ continents
     // leave permanent ocean corridors that cap land at ~42%. With 2 continents the corridors vanish and land

@@ -935,8 +935,11 @@ function getSelectedProfileId() {
 
 // Phase 10: apply a profile's recommended sculpt preset to the sculpt sliders when it is selected, so a
 // physical profile (e.g. compact-40km) starts from its measured-coherent sculpting (low roughness + strong
-// thermal erosion → broad massifs, ~31° slopes). Runs once on load; the user can still adjust the sliders.
-function applyProfileSculptDefaults() {
+// thermal erosion → broad massifs). MUST be called by main.js AFTER the slider label-update listeners are
+// attached and BEFORE the initial generate — so the displayed slider numbers refresh to the preset AND the
+// first world uses it. (Called too early, the dispatched 'input' has no listener → labels show stale
+// HTML defaults even though the values are correct.) The user can still adjust the sliders afterward.
+export function applyProfileSculptDefaults() {
     try {
         const sc = getWorldProfile(getSelectedProfileId()).sculpt;
         if (!sc) return;
@@ -948,10 +951,6 @@ function applyProfileSculptDefaults() {
             if (el) { el.value = sc[key]; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
         }
     } catch (e) { /* sliders not present / no preset — ignore */ }
-}
-if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyProfileSculptDefaults);
-    else applyProfileSculptDefaults();
 }
 
 export function reapplyViaWorker(onDone, skipClimate = false) {
