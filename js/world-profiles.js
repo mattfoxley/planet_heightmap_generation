@@ -41,6 +41,9 @@ export const COMPACT_40KM_PROFILE = {
   radiusKm: 20,
   diameterKm: 40,
   climateEnabled: false,   // Earth latitude climate invalid on an interior sphere (design §13)
+  // Make the Land Coverage slider a genuine target (ocean-land.js top-up): 0.3 → ~30% land,
+  // 1.0 → ~no ocean (one continuous landmass). Off for legacy/earthlike (would shift the Earth baseline).
+  logicalLandCoverage: true,
 
   elevation: {
     // Compact terrain spec (interior 40 km world). maxLandHeightKm is a RARE cap (exceptional summit),

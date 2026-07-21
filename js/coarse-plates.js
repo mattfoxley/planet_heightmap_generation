@@ -18,7 +18,7 @@ import {
  * Uses isolated RNG so it doesn't affect the main mesh's random stream.
  * Jitter is fixed so plate shapes don't change when the user adjusts irregularity.
  */
-export function generateCoarsePlates(seed, numPlates, numContinents, continentSizeVariety = 0, landCoverage = 0.3) {
+export function generateCoarsePlates(seed, numPlates, numContinents, continentSizeVariety = 0, landCoverage = 0.3, logicalLandCoverage = false) {
     const coarseRng = makeRng(seed + 137);
     const { mesh: coarseMesh, r_xyz: coarse_xyz } = buildSphere(N_COARSE, COARSE_JITTER, coarseRng);
 
@@ -26,7 +26,7 @@ export function generateCoarsePlates(seed, numPlates, numContinents, continentSi
         generatePlates(coarseMesh, coarse_xyz, numPlates, seed);
 
     const coarsePlateIsOcean = assignOceanLand(
-        coarseMesh, coarse_r_plate, coarsePlateSeeds, coarse_xyz, seed, numContinents, continentSizeVariety, landCoverage
+        coarseMesh, coarse_r_plate, coarsePlateSeeds, coarse_xyz, seed, numContinents, continentSizeVariety, landCoverage, logicalLandCoverage
     );
 
     return {

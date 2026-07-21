@@ -4,7 +4,7 @@
 
 import { makeRng } from './rng.js';
 
-export function assignOceanLand(mesh, r_plate, plateSeeds, r_xyz, seed, numContinents, continentSizeVariety = 0, landCoverage = 0.3) {
+export function assignOceanLand(mesh, r_plate, plateSeeds, r_xyz, seed, numContinents, continentSizeVariety = 0, landCoverage = 0.3, logicalLandCoverage = false) {
     const rng = makeRng(seed + 42);
     const numRegions = mesh.numRegions;
     const plateIds = Array.from(plateSeeds);
@@ -225,6 +225,29 @@ export function assignOceanLand(mesh, r_plate, plateSeeds, r_xyz, seed, numConti
                 const c = bordering.values().next().value;
                 for (const op of component) plateContinent[op] = c;
                 landArea += compArea;
+            }
+        }
+    }
+
+    // 6b. Top-up so landCoverage behaves as a genuine target. The growth/absorb steps above bias toward
+    // preserving ocean (0.9 grow factor, per-continent caps, corridor plates that touch two continents,
+    // and the main ocean is never absorbed), so they UNDERSHOOT — a high setting can't shrink the ocean and
+    // landCoverage 1.0 never reaches a "desert planet". Here we promote ocean plates outward from existing
+    // land (to the nearest adjacent continent) until the target area is met — bypassing the corridor rule.
+    // Opt-in per profile (logicalLandCoverage): the legacy Earth default undershoots even at 0.3, so
+    // enabling this globally would shift the Earth baseline — gate it so legacy/earthlike are byte-identical.
+    if (logicalLandCoverage && landArea < targetLandArea) {
+        let changed = true;
+        while (changed && landArea < targetLandArea) {
+            changed = false;
+            for (const pid of plateIds) {
+                if (landArea >= targetLandArea) break;
+                if (plateContinent[pid] !== undefined) continue;
+                let adjC;
+                for (const adj of plateAdj[pid]) {
+                    if (plateContinent[adj] !== undefined) { adjC = plateContinent[adj]; break; }
+                }
+                if (adjC !== undefined) { plateContinent[pid] = adjC; landArea += plateArea[pid]; changed = true; }
             }
         }
     }

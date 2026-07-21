@@ -282,7 +282,7 @@ function handleGenerate(data) {
         progress(10, 'Generating coarse plates\u2026');
         t0 = performance.now();
         const { coarseMesh, coarse_xyz, coarse_r_plate, coarsePlateSeeds, coarsePlateVec, coarsePlateIsOcean } =
-            generateCoarsePlates(seed, P, numContinents, continentSizeVariety, landCoverage);
+            generateCoarsePlates(seed, P, numContinents, continentSizeVariety, landCoverage, !!(profile && profile.logicalLandCoverage));
         timing.push({ stage: `Coarse plates (${P} plates, ${numContinents} continents)`, ms: performance.now() - t0 });
 
         progress(20, 'Projecting plates\u2026');
