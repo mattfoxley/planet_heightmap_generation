@@ -860,6 +860,12 @@ export function sharpenRidges(mesh, r_elevation, r_isOcean, iterations, strength
  */
 export function applyDetailNoise(mesh, r_xyz, r_elevation, r_isOcean, seed, opts = {}) {
     const amplitudeKm = opts.amplitudeKm ?? DETAIL_NOISE_AMP_KM;
+    // Elevation curve for the km<->elev inversion below. Defaults to the legacy Earth curve
+    // (maxLand 6, quartic 5-4t) so legacy is byte-identical; a physical profile passes its own
+    // {maxLandHeightKm, hypsometricExponent} so detail bumps are the intended km height on that world.
+    const _elevP = opts.elevationProfile || null;
+    const _maxLand = _elevP && _elevP.maxLandHeightKm != null ? _elevP.maxLandHeightKm : 6;
+    const _expo = _elevP ? _elevP.hypsometricExponent : undefined;   // undefined → legacy quartic
     const frequencyMult = opts.frequencyMult ?? 1.0;
     const warpAmpMult = opts.warpAmpMult ?? 1.0;
     const bipolar = opts.bipolar ?? false;
@@ -919,26 +925,43 @@ export function applyDetailNoise(mesh, r_xyz, r_elevation, r_isOcean, seed, opts
         if (amplitudeField) deltaKm *= amplitudeField[r];
         if (deltaKm > -1e-9 && deltaKm < 1e-9) continue;
 
-        // km(t) = 6t⁴(5−4t); invert km0 + deltaKm via Newton-Raphson.
-        // Clamp kmTarget at a tiny positive so bipolar dips can't push
-        // land below sea level. At low elev the derivative is ~0, so
-        // seed with the small-t approximation (km ≈ 30t⁴ → t ≈ (km/30)^¼).
-        const t02 = elev * elev, t04 = t02 * t02;
-        const km0 = 6 * t04 * (5 - 4 * elev);
-        const kmTarget = Math.max(1e-4, km0 + deltaKm);
-
-        let t = Math.max(elev, Math.pow(kmTarget / 30, 0.25));
-        if (t > 0.999) t = 0.999;
-        for (let i = 0; i < 5; i++) {
-            const t2 = t * t, t3 = t2 * t, t4 = t3 * t;
-            const f = 6 * t4 * (5 - 4 * t) - kmTarget;
-            const fp = 120 * t3 * (1 - t);
-            if (fp < 1e-6) break;
-            const dt = f / fp;
-            t -= dt;
-            if (t < 1e-4) t = 1e-4;
-            else if (t > 0.9999) t = 0.9999;
-            if (Math.abs(dt) < 1e-6) break;
+        // Invert km0 + deltaKm back to normalized elev via Newton-Raphson, using the ACTIVE elevation
+        // curve. Two shapes: legacy quartic km(t)=maxLand·t⁴(5−4t) (default, maxLand 6 → byte-identical),
+        // or a physical profile's power curve km(t)=maxLand·t^p. Clamp kmTarget to a tiny positive so
+        // bipolar dips can't push land below sea level.
+        let t;
+        if (_expo != null) {
+            // power curve: km = maxLand·t^p → t0 = (km/maxLand)^(1/p), f = maxLand·t^p − kmTarget
+            const km0 = _maxLand * Math.pow(elev, _expo);
+            const kmTarget = Math.max(1e-4, km0 + deltaKm);
+            t = Math.max(elev, Math.pow(kmTarget / _maxLand, 1 / _expo));
+            if (t > 0.999) t = 0.999;
+            for (let i = 0; i < 6; i++) {
+                const f = _maxLand * Math.pow(t, _expo) - kmTarget;
+                const fp = _maxLand * _expo * Math.pow(t, _expo - 1);
+                if (fp < 1e-6) break;
+                t -= f / fp;
+                if (t < 1e-4) t = 1e-4; else if (t > 0.9999) t = 0.9999;
+                if (Math.abs(f / fp) < 1e-6) break;
+            }
+        } else {
+            // legacy quartic (km ≈ 5·maxLand·t⁴ at small t → seed t ≈ (km/(5·maxLand))^¼)
+            const t02 = elev * elev, t04 = t02 * t02;
+            const km0 = _maxLand * t04 * (5 - 4 * elev);
+            const kmTarget = Math.max(1e-4, km0 + deltaKm);
+            t = Math.max(elev, Math.pow(kmTarget / (5 * _maxLand), 0.25));
+            if (t > 0.999) t = 0.999;
+            for (let i = 0; i < 5; i++) {
+                const t2 = t * t, t3 = t2 * t, t4 = t3 * t;
+                const f = _maxLand * t4 * (5 - 4 * t) - kmTarget;
+                const fp = _maxLand * 20 * t3 * (1 - t);
+                if (fp < 1e-6) break;
+                const dt = f / fp;
+                t -= dt;
+                if (t < 1e-4) t = 1e-4;
+                else if (t > 0.9999) t = 0.9999;
+                if (Math.abs(dt) < 1e-6) break;
+            }
         }
         r_elevation[r] = t;
     }

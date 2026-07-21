@@ -134,6 +134,7 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
             dampenField: r_dampen ?? null,
             dampenStrength: DETAIL_NOISE_DAMPEN_STRENGTH,
             amplitudeField: r_orogenic ?? null,
+            elevationProfile: profile && profile.elevation,   // Phase 10: detail bumps sized on the world's own curve
         });
         timing.push({ stage: 'Detail noise L1 (0-100m bumps)', ms: performance.now() - t0 });
     }
@@ -150,6 +151,7 @@ function runPostProcessing(mesh, r_xyz, r_elevation, params, neighborDist, seed,
             dampenField: r_dampen ?? null,
             dampenStrength: DETAIL_NOISE_DAMPEN_STRENGTH,
             amplitudeField: r_orogenic ?? null,
+            elevationProfile: profile && profile.elevation,   // Phase 10: detail bumps sized on the world's own curve
         });
         timing.push({ stage: 'Detail noise L2 (±50m biased)', ms: performance.now() - t0 });
     }
