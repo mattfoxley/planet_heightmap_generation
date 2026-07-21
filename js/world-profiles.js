@@ -69,6 +69,10 @@ export const COMPACT_40KM_PROFILE = {
     // leave permanent ocean corridors that cap land at ~42%. With 2 continents the corridors vanish and land
     // reaches the target — measured 69% land at landCoverage 0.7 (spec: "2–4 major land regions").
     landCoverage: 0.7, plates: 12, continents: 2,
+    // Default detail: a 40 km world needs far fewer regions than Earth. ~300 (~100k regions) gives a
+    // detailed look in ~2 s; the phasor + mostly-land drainage scale super-linearly, so 600 (~204k) is
+    // ~26 s — reserve high detail for a final bake. Fast iteration by default.
+    detail: 300,
   },
   tectonics: {
     plateCountRange: [8, 18], initialPlateCount: 12,
@@ -79,6 +83,11 @@ export const COMPACT_40KM_PROFILE = {
   },
   terrain: {
     ridgeSpacingKm: 0.8, ridgeEnvelopeKm: 2.5, ridgeDirectionSmoothingKm: 4.0,
+    // Phasor structural-ridge system scaled for the 20 km radius. The Earth defaults (55 / 180 km) are
+    // larger than this whole sphere → global kernels + a searchBins explosion (generation hangs). These
+    // local values give ~a few km ridge spacing within mountain belts and keep the kernel envelope local
+    // (bandwidth 6 km → searchBins ~11, vs ~540 with the Earth default — the perf fix).
+    phasorWavelengthKm: 3.5, phasorBandwidthKm: 6.0,
     foothillReachKm: 3.5, coastalPlainWidthKm: 1.5, shelfWidthKm: 0.8,
     continentalSlopeWidthKm: 0.8, basinScaleKm: 8.0, detailMinWavelengthKm: 0.12,
     warpAmplitudeKm: 0.3, maxWarpKm: 1.0,   // domain warp (design §7); clamped vs smallest protected feature

@@ -941,7 +941,7 @@ function applyProfileSculptDefaults() {
         const sc = getWorldProfile(getSelectedProfileId()).sculpt;
         if (!sc) return;
         const map = { noise: 'sNs', smoothing: 'sS', thermalErosion: 'sTEr', hydraulicErosion: 'sHEr', ridgeSharpening: 'sRs',
-                      landCoverage: 'sLc', plates: 'sP', continents: 'sCn' };
+                      landCoverage: 'sLc', plates: 'sP', continents: 'sCn', detail: 'sN' };
         for (const key in map) {
             if (sc[key] == null) continue;
             const el = document.getElementById(map[key]);

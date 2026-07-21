@@ -1393,9 +1393,17 @@ function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, see
     // varies in concert with the existing orogeny pattern.
     const dl_oroPower = debugLayers.orogenicPower;
 
-    // Convert physical km to unit-sphere angular units (R = profile.radiusKm; Phase 3 world-scale)
-    const wavelengthRad = PHASOR_WAVELENGTH_KM / meshMetrics.radiusKm;
-    const bandwidthRad = PHASOR_BANDWIDTH_KM / meshMetrics.radiusKm;
+    // Convert physical km to unit-sphere angular units (R = profile.radiusKm; Phase 3 world-scale).
+    // Wavelength/bandwidth default to the Earth-scaled PHASOR_*_KM, but a profile may override them
+    // (terrain.phasorWavelengthKm / phasorBandwidthKm). This is ESSENTIAL on a small-radius world: the Earth
+    // 55/180 km values divided by a 20 km radius give bandwidthRad ≈ 9 (larger than the sphere), which makes
+    // every kernel's envelope global and searchBins explode → the generation appears to hang. See the
+    // searchBins clamp below as the defensive backstop.
+    const _ter = profile.terrain || {};
+    const phWavelengthKm = _ter.phasorWavelengthKm != null ? _ter.phasorWavelengthKm : PHASOR_WAVELENGTH_KM;
+    const phBandwidthKm  = _ter.phasorBandwidthKm  != null ? _ter.phasorBandwidthKm  : PHASOR_BANDWIDTH_KM;
+    const wavelengthRad = phWavelengthKm / meshMetrics.radiusKm;
+    const bandwidthRad = phBandwidthKm / meshMetrics.radiusKm;
     const frequency = 1 / wavelengthRad;
     const invBw2 = -0.5 / (bandwidthRad * bandwidthRad);
     // 3-sigma cutoff in chord-length squared (≈ angle² for small angles)
@@ -1412,7 +1420,10 @@ function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, see
     // physical radii at different mesh resolutions, making mountains
     // visibly less coherent at high detail.
     const avgEdgeKm = meshMetrics.averageEdgeKm;   // = (π·radiusKm)/√numRegions (Phase 3 world-scale)
-    const smoothingPasses = Math.max(2, Math.round(PHASOR_DIRECTION_SMOOTHING_KM / avgEdgeKm));
+    // Profile may override the (Earth-scaled) direction-smoothing distance. Clamped to a hard max: on a
+    // small-radius world PHASOR_DIRECTION_SMOOTHING_KM (220) / tiny avgEdgeKm would be hundreds of passes.
+    const phDirSmoothKm = _ter.ridgeDirectionSmoothingKm != null ? _ter.ridgeDirectionSmoothingKm : PHASOR_DIRECTION_SMOOTHING_KM;
+    const smoothingPasses = Math.min(60, Math.max(2, Math.round(phDirSmoothKm / avgEdgeKm)));
 
     const stressActiveFloor = PHASOR_STRESS_THRESHOLD * maxStress;
     let curDir = new Float32Array(r_stressDir);
@@ -1538,9 +1549,11 @@ function applyPhasorRidges(mesh, r_xyz, r_elevation, tect, sf, tt, noiseMag, see
         if (!grid[bin]) grid[bin] = [];
         grid[bin].push(ki);
     }
-    // Search radius in bins: bandwidth × 3 in radians vs bin size in radians
+    // Search radius in bins: bandwidth × 3 in radians vs bin size in radians. CLAMPED to the grid height —
+    // searching more bins than exist is pointless, and for a large bandwidth on a small-radius world it would
+    // make the per-cell double loop iterate millions of out-of-range cells (the compact-world "hang").
     const binLatRad = Math.PI / PLAT_BINS;
-    const searchBins = Math.max(1, Math.ceil(3 * bandwidthRad / binLatRad));
+    const searchBins = Math.min(PLAT_BINS, Math.max(1, Math.ceil(3 * bandwidthRad / binLatRad)));
 
     // Phasor is a structural shaped-noise feature, not surface texture —
     // amplitude is decoupled from the noiseMag slider so cranking phasor
