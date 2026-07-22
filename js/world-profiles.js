@@ -40,7 +40,12 @@ export const COMPACT_40KM_PROFILE = {
   id: 'compact-40km',
   radiusKm: 20,
   diameterKm: 40,
-  climateEnabled: false,   // Earth latitude climate invalid on an interior sphere (design §13)
+  // Climate (wind/ocean/precip/temperature → biome/satellite maps) is an Earth latitude-based
+  // APPROXIMATION — geologically not literal for an interior sphere, but a useful, fast basis for material
+  // masks in downstream tools. Left ON for that reason. NOTE: this flag is currently informational only —
+  // climate is actually gated by the detail slider (auto-skipped above AUTO_CLIMATE_THRESHOLD = 300k
+  // regions for performance), so generate the map set at ≤300k detail.
+  climateEnabled: true,
   // Make the Land Coverage slider a genuine target (ocean-land.js top-up): 0.3 → ~30% land,
   // 1.0 → ~no ocean (one continuous landmass). Off for legacy/earthlike (would shift the Earth baseline).
   logicalLandCoverage: true,
